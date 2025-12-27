@@ -468,11 +468,13 @@ pcrate=44100
 
 [ide, primary]
 enable=true
+pnp=false
 int13fakeio=true
 int13fakev86io=true
 
 [ide, secondary]
 enable=true
+pnp=false
 int13fakeio=true
 int13fakev86io=true
 
@@ -732,11 +734,13 @@ pcrate=44100
 
 [ide, primary]
 enable=true
+pnp=false
 int13fakeio=true
 int13fakev86io=true
 
 [ide, secondary]
 enable=true
+pnp=false
 int13fakeio=true
 int13fakev86io=true
 
