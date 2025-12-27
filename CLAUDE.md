@@ -52,6 +52,34 @@ bun run tsc          # 타입 체크
 - Linux x64
 - (Windows 미지원 - 공식 두기 런처 사용)
 
+## 릴리즈 방법
+GitHub 릴리즈 생성 시 실행 권한 보존을 위해 tar.gz로 압축하여 업로드합니다.
+
+```bash
+# 1. 버전 업데이트
+# - package.json의 version 수정
+# - src/index.ts의 VERSION 상수 수정
+
+# 2. 모든 플랫폼 빌드
+bun run build:all
+
+# 3. tar.gz 압축 (실행 권한 보존)
+cd dist
+tar -czvf doogie-cli-macos-arm64.tar.gz doogie-cli-macos-arm64
+tar -czvf doogie-cli-macos-x64.tar.gz doogie-cli-macos-x64
+tar -czvf doogie-cli-linux-x64.tar.gz doogie-cli-linux-x64
+
+# 4. GitHub 릴리즈 생성
+gh release create v0.x.x \
+  --title "v0.x.x" \
+  --notes "릴리즈 노트..." \
+  ./dist/doogie-cli-macos-arm64.tar.gz \
+  ./dist/doogie-cli-macos-x64.tar.gz \
+  ./dist/doogie-cli-linux-x64.tar.gz
+```
+
+**주의**: 바이너리를 직접 업로드하면 다운로드 시 실행 권한이 유실됩니다. 반드시 tar.gz로 압축하여 업로드해야 합니다.
+
 ## 파일명 패턴 (두기의 고전게임)
 - 게임: `{CODE}_{DATE}.7z.001` ~ `.xxx` (분할 압축)
 - 설정: `{CODE}_{DATE}_Config.7z`
