@@ -1,5 +1,15 @@
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
+import {
+  parseEditConf as parseEditConfEntries,
+  parseEditConfVersion,
+  isLegacyVersion,
+  convertEditConfToSettings,
+  extractWin9xSettings,
+  getExecuterType,
+  type DosboxSettings,
+  type Win9xSettings,
+} from './dosbox-settings.ts';
 
 // EUC-KR is a valid encoding label for TextDecoder
 // https://encoding.spec.whatwg.org/#names-and-labels
@@ -72,6 +82,8 @@ export interface GameConfig {
   cpuType?: string;
   windowsImage?: string;  // W95KR_xxx or W98KR_xxx from edit.conf
   resolution?: Win9xResolution;  // Win9x display resolution from edit.conf
+  dosboxSettings?: DosboxSettings;  // Full DOSBox settings from edit.conf
+  win9xSettings?: Win9xSettings;    // Win9x-specific settings (DX.REG, etc.)
 }
 
 function parseInfoTxt(content: string): { name: string; nameEn?: string; updateLog?: string } {
@@ -394,49 +406,60 @@ function parseResolutionString(resStr: string): Win9xResolution | null {
   return { width, height, bitsPerPixel: bits };
 }
 
-function parseEditConf(content: string): { cpuCycles?: number; cpuType?: string; windowsImage?: string; resolution?: Win9xResolution } {
-  const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+interface ParsedEditConf {
+  cpuCycles?: number;
+  cpuType?: string;
+  windowsImage?: string;
+  resolution?: Win9xResolution;
+  dosboxSettings?: DosboxSettings;
+  win9xSettings?: Win9xSettings;
+}
+
+function parseEditConf(content: string): ParsedEditConf {
+  // Detect version and use appropriate mapping
+  const version = parseEditConfVersion(content);
+  const isLegacy = isLegacyVersion(version);
+
+  // Use new index-based parser with version-aware mapping
+  const entries = parseEditConfEntries(content);
+  const dosboxSettings = convertEditConfToSettings(entries, isLegacy);
+  const win9xSettings = extractWin9xSettings(entries, isLegacy);
+  const windowsImage = getExecuterType(entries);
+
+  // Extract CPU settings from dosboxSettings
   let cpuCycles: number | undefined;
   let cpuType: string | undefined;
-  let windowsImage: string | undefined;
-  let resolution: Win9xResolution | undefined;
 
-  for (const line of lines) {
-    if (line.startsWith('ver.')) continue;
-
-    const parts = line.split('|');
-    if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
-      const code = parts[0];
-      const subCode = parts[1];
-      const value = parts[2];
-
-      // 0|0 = Windows image name (W95KR_xxx or W98KR_xxx)
-      if (code === '0' && subCode === '0') {
-        windowsImage = value;
+  if (dosboxSettings.cpu) {
+    if (dosboxSettings.cpu.cycles) {
+      const cycleValue = String(dosboxSettings.cpu.cycles);
+      const num = parseInt(cycleValue, 10);
+      if (!isNaN(num)) {
+        cpuCycles = num;
       }
-
-      // Check for resolution pattern (e.g., "800x8", "640x16")
-      // This can appear in various sections depending on config version
-      const resMatch = value.match(/^\d+x\d+$/);
-      if (resMatch) {
-        const parsed = parseResolutionString(value);
-        if (parsed) {
-          resolution = parsed;
-        }
-      }
-
-      if (code === '8' && subCode === '2') {
-        const num = parseInt(value, 10);
-        if (!isNaN(num)) {
-          cpuCycles = num;
-        }
-      } else if (code === '8' && subCode === '1') {
-        cpuType = value;
-      }
+    }
+    if (dosboxSettings.cpu.cputype) {
+      cpuType = String(dosboxSettings.cpu.cputype);
     }
   }
 
-  return { cpuCycles, cpuType, windowsImage, resolution };
+  // Convert win9xSettings.resolution to Win9xResolution format
+  const resolution: Win9xResolution | undefined = win9xSettings.resolution
+    ? {
+        width: win9xSettings.resolution.width,
+        height: win9xSettings.resolution.height,
+        bitsPerPixel: win9xSettings.resolution.bitsPerPixel,
+      }
+    : undefined;
+
+  return {
+    cpuCycles,
+    cpuType,
+    windowsImage: windowsImage || undefined,
+    resolution,
+    dosboxSettings,
+    win9xSettings,
+  };
 }
 
 export async function parseGameConfig(gameDir: string): Promise<GameConfig | null> {
@@ -498,6 +521,8 @@ export async function parseGameConfig(gameDir: string): Promise<GameConfig | nul
       config.cpuType = editConfig.cpuType;
       config.windowsImage = editConfig.windowsImage;
       config.resolution = editConfig.resolution;
+      config.dosboxSettings = editConfig.dosboxSettings;
+      config.win9xSettings = editConfig.win9xSettings;
 
       // Update executer based on windowsImage for options that use image.img
       if (editConfig.windowsImage) {
