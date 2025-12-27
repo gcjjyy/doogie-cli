@@ -7,8 +7,9 @@ import { listGames } from './commands/list.ts';
 import { downloadGame } from './commands/download.ts';
 import { searchOnlineGames } from './commands/search.ts';
 import { ensureAppDirs } from './utils/paths.ts';
+import packageJson from '../package.json';
 
-const VERSION = '0.1.3';
+const VERSION = packageJson.version;
 
 async function main(): Promise<void> {
   // Initialize

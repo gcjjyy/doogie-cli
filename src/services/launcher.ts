@@ -1,7 +1,7 @@
-import { spawn, $ } from 'bun';
+import { spawn } from 'bun';
 import { existsSync } from 'fs';
-import { readdir, writeFile, readFile } from 'fs/promises';
-import { join, extname, dirname } from 'path';
+import { readdir, writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 import { findDosboxPath, getDosboxInstallGuide } from '../utils/platform.ts';
 import { getW98krXDir, getW95krXDir } from '../utils/paths.ts';
 import { findW98krByName, findW95krByName, parseDiskGeometry, isW98krInstalled, isW95krInstalled } from './w98kr.ts';
@@ -359,7 +359,8 @@ export async function parseConfigFile(configDir: string): Promise<LauncherConfig
 export async function generateW98krConfig(
   gameDir: string,
   option: ExecutionOption,
-  w98krInfo: W98krInfo
+  w98krInfo: W98krInfo,
+  resolution: { width: number; height: number; bitsPerPixel: number }
 ): Promise<string> {
   const configPath = join(gameDir, 'dosbox-w98kr.conf');
 
@@ -369,28 +370,30 @@ export async function generateW98krConfig(
   // Check for CD image
   const cdImagePath = await findCdImage(gameDir);
 
+  // Determine host directory for Game.txt and DX.REG
+  const hostDir = option.optionPath
+    ? join(gameDir, 'DG_9xOpt', option.optionPath)
+    : join(gameDir, 'DG_9xOpt', '000');
+
+  // Ensure host directory exists and write DX.REG
+  await mkdir(hostDir, { recursive: true });
+  await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
+
   // Build autoexec section for booting Windows 98
   let autoexec = '@echo off\n';
 
-  // Mount host folder containing Game.txt for auto-run setup
-  if (option.optionPath) {
-    const gameTxtDir = join(gameDir, 'DG_9xOpt', option.optionPath);
-    if (existsSync(join(gameTxtDir, 'Game.txt'))) {
-      autoexec += `MOUNT Y "${gameTxtDir}"\n`;
-    }
-  }
+  // Mount host folder containing Game.txt and DX.REG
+  autoexec += `MOUNT Y "${hostDir}"\n`;
 
   // Mount Windows 98 as C: drive (IDE primary master)
   autoexec += `IMGMOUNT C "${w98krInfo.imagePath}" -size ${w98krGeometry.sectorSize},${w98krGeometry.sectorsPerTrack},${w98krGeometry.heads},${w98krGeometry.cylinders} -ide 1m\n`;
 
-  // Copy Game.txt to C: drive for Autorun.exe
-  if (option.optionPath) {
-    const gameTxtDir = join(gameDir, 'DG_9xOpt', option.optionPath);
-    if (existsSync(join(gameTxtDir, 'Game.txt'))) {
-      autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
-      autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
-    }
+  // Copy Game.txt and DX.REG to C: drive
+  if (existsSync(join(hostDir, 'Game.txt'))) {
+    autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
   }
+  autoexec += 'COPY Y:\\DX.REG C:\\DX.REG\n';
+  autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
 
   // Check if game uses disk image or folder-based
   if (option.diskGeometry && option.executable?.toLowerCase().endsWith('.img')) {
@@ -425,6 +428,13 @@ autolock=true
 machine=svga_s3
 memsize=256
 
+[dos]
+int13fakeio=true
+int13fakev86io=true
+
+[bios]
+isapnpbios=false
+
 [mouse]
 mouse_emulation=integration
 
@@ -458,9 +468,13 @@ pcrate=44100
 
 [ide, primary]
 enable=true
+int13fakeio=true
+int13fakev86io=true
 
 [ide, secondary]
 enable=true
+int13fakeio=true
+int13fakev86io=true
 
 [parallel]
 parallel1=disabled
@@ -512,14 +526,12 @@ export async function launchW98krGame(
     console.log(`Auto-run option: ${selectedOption.optionPath}`);
   }
 
-  // Update display settings on the Win98 image
   // Use resolution from gameConfig if available, otherwise default to 640x480 8-bit
   const resolution = gameConfig.resolution || { width: 640, height: 480, bitsPerPixel: 8 };
   console.log(`Setting display: ${resolution.width}x${resolution.height} ${resolution.bitsPerPixel === 8 ? '256 colors' : `${resolution.bitsPerPixel}-bit`}`);
-  await updateWin9xDisplaySettings(w98krInfo.imagePath, resolution.width, resolution.height, resolution.bitsPerPixel);
 
-  // Generate DOSBox-X config for W98KR (includes Game.txt copy in autoexec)
-  const configPath = await generateW98krConfig(gameDir, selectedOption, w98krInfo);
+  // Generate DOSBox-X config for W98KR (writes DX.REG to host and copies via autoexec)
+  const configPath = await generateW98krConfig(gameDir, selectedOption, w98krInfo, resolution);
 
   // Launch DOSBox-X
   const proc = spawn([dosboxInfo.path, '-conf', configPath], {
@@ -584,12 +596,13 @@ function generateDxReg(settings: Win9xDisplaySettings): string {
 `;
 }
 
-async function updateWin9xDisplaySettings(
-  winImagePath: string,
+// Write DX.REG to host directory (will be copied to C: via DOSBox-X autoexec)
+async function writeDxRegToHostDir(
+  hostDir: string,
   width: number = 640,
   height: number = 480,
-  bitsPerPixel: number = 8  // Default to 8-bit (256 colors)
-): Promise<boolean> {
+  bitsPerPixel: number = 8
+): Promise<void> {
   const settings: Win9xDisplaySettings = {
     bitsPerPixel,
     width,
@@ -599,43 +612,9 @@ async function updateWin9xDisplaySettings(
     threeDfx: true,
   };
 
-  try {
-    // Mount the Windows image (read-write mode)
-    const mountResult = await $`hdiutil attach "${winImagePath}" -nobrowse`.quiet();
-    if (mountResult.exitCode !== 0) {
-      console.error('Failed to mount Windows image');
-      return false;
-    }
-
-    // Parse mount point from output
-    const mountOutput = mountResult.stdout.toString();
-    const mountMatch = mountOutput.match(/\/Volumes\/[^\n]+/);
-    if (!mountMatch) {
-      console.error('Could not find mount point');
-      return false;
-    }
-
-    const mountPoint = mountMatch[0].trim();
-
-    try {
-      // Generate DX.REG content
-      const dxRegContent = generateDxReg(settings);
-
-      // Write DX.REG to the mounted image
-      const dxRegPath = join(mountPoint, 'DX.REG');
-      await writeFile(dxRegPath, dxRegContent, 'utf-8');
-
-      console.log(`Updated display settings: ${settings.width}x${settings.height} ${settings.bitsPerPixel}-bit`);
-
-      return true;
-    } finally {
-      // Always unmount the image
-      await $`hdiutil detach "${mountPoint}"`.quiet();
-    }
-  } catch (error) {
-    console.error('Error updating display settings:', error);
-    return false;
-  }
+  const dxRegContent = generateDxReg(settings);
+  const dxRegPath = join(hostDir, 'DX.REG');
+  await writeFile(dxRegPath, dxRegContent, 'utf-8');
 }
 
 // W95KR (Windows 95) support functions
@@ -643,7 +622,8 @@ async function updateWin9xDisplaySettings(
 export async function generateW95krConfig(
   gameDir: string,
   option: ExecutionOption,
-  w95krInfo: W98krInfo
+  w95krInfo: W98krInfo,
+  resolution: { width: number; height: number; bitsPerPixel: number }
 ): Promise<string> {
   const configPath = join(gameDir, 'dosbox-w95kr.conf');
 
@@ -653,28 +633,30 @@ export async function generateW95krConfig(
   // Check for CD image
   const cdImagePath = await findCdImage(gameDir);
 
+  // Determine host directory for Game.txt and DX.REG
+  const hostDir = option.optionPath
+    ? join(gameDir, 'DG_9xOpt', option.optionPath)
+    : join(gameDir, 'DG_9xOpt', '000');
+
+  // Ensure host directory exists and write DX.REG
+  await mkdir(hostDir, { recursive: true });
+  await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
+
   // Build autoexec section for booting Windows 95
   let autoexec = '@echo off\n';
 
-  // Mount host folder containing Game.txt for auto-run setup
-  if (option.optionPath) {
-    const gameTxtDir = join(gameDir, 'DG_9xOpt', option.optionPath);
-    if (existsSync(join(gameTxtDir, 'Game.txt'))) {
-      autoexec += `MOUNT Y "${gameTxtDir}"\n`;
-    }
-  }
+  // Mount host folder containing Game.txt and DX.REG
+  autoexec += `MOUNT Y "${hostDir}"\n`;
 
   // Mount Windows 95 as C: drive (IDE primary master)
   autoexec += `IMGMOUNT C "${w95krInfo.imagePath}" -size ${w95krGeometry.sectorSize},${w95krGeometry.sectorsPerTrack},${w95krGeometry.heads},${w95krGeometry.cylinders} -ide 1m\n`;
 
-  // Copy Game.txt to C: drive for Autorun.exe
-  if (option.optionPath) {
-    const gameTxtDir = join(gameDir, 'DG_9xOpt', option.optionPath);
-    if (existsSync(join(gameTxtDir, 'Game.txt'))) {
-      autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
-      autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
-    }
+  // Copy Game.txt and DX.REG to C: drive
+  if (existsSync(join(hostDir, 'Game.txt'))) {
+    autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
   }
+  autoexec += 'COPY Y:\\DX.REG C:\\DX.REG\n';
+  autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
 
   // Check if game uses disk image or folder-based
   if (option.diskGeometry && option.executable?.toLowerCase().endsWith('.img')) {
@@ -710,6 +692,13 @@ machine=svga_s3
 memsize=256
 vmemsize=8
 
+[dos]
+int13fakeio=true
+int13fakev86io=true
+
+[bios]
+isapnpbios=false
+
 [mouse]
 mouse_emulation=integration
 
@@ -743,9 +732,13 @@ pcrate=44100
 
 [ide, primary]
 enable=true
+int13fakeio=true
+int13fakev86io=true
 
 [ide, secondary]
 enable=true
+int13fakeio=true
+int13fakev86io=true
 
 [parallel]
 parallel1=disabled
@@ -797,14 +790,12 @@ export async function launchW95krGame(
     console.log(`Auto-run option: ${selectedOption.optionPath}`);
   }
 
-  // Update display settings on the Win95 image
   // Use resolution from gameConfig if available, otherwise default to 640x480 8-bit
   const resolution = gameConfig.resolution || { width: 640, height: 480, bitsPerPixel: 8 };
   console.log(`Setting display: ${resolution.width}x${resolution.height} ${resolution.bitsPerPixel === 8 ? '256 colors' : `${resolution.bitsPerPixel}-bit`}`);
-  await updateWin9xDisplaySettings(w95krInfo.imagePath, resolution.width, resolution.height, resolution.bitsPerPixel);
 
-  // Generate DOSBox-X config for W95KR (includes Game.txt copy in autoexec)
-  const configPath = await generateW95krConfig(gameDir, selectedOption, w95krInfo);
+  // Generate DOSBox-X config for W95KR (writes DX.REG to host and copies via autoexec)
+  const configPath = await generateW95krConfig(gameDir, selectedOption, w95krInfo, resolution);
 
   // Launch DOSBox-X
   const proc = spawn([dosboxInfo.path, '-conf', configPath], {

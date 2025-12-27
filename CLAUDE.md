@@ -52,6 +52,26 @@ bun run tsc          # 타입 체크
 - Linux x64
 - (Windows 미지원 - 공식 두기 런처 사용)
 
+## 개발 지침
+
+### 플랫폼 독립적 코드 작성
+- **hdiutil 사용 금지**: macOS 전용 명령어이므로 사용하지 않음
+- **이미지 파일에 직접 쓰기 금지**: Win95.img, Win98.img 등에 직접 파일을 쓰지 않음
+- **호스트 파일 + DOSBox 마운트 방식 사용**:
+  1. 호스트 파일시스템에 파일 생성 (예: DX.REG, Game.txt)
+  2. DOSBox-X autoexec에서 해당 디렉토리를 드라이브로 마운트
+  3. COPY 명령으로 C: 드라이브에 복사
+
+```conf
+# 예시: autoexec에서 호스트 파일을 C:로 복사
+MOUNT Y "/path/to/host/dir"
+IMGMOUNT C "Win95.img" -ide 1m
+COPY Y:\DX.REG C:\DX.REG
+COPY Y:\Game.txt C:\Game.txt
+MOUNT -u Y
+BOOT C:
+```
+
 ## 릴리즈 방법
 GitHub 릴리즈 생성 시 실행 권한 보존을 위해 tar.gz로 압축하여 업로드합니다.
 
