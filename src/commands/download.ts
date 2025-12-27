@@ -3,10 +3,39 @@ import pc from 'picocolors';
 import { parseGamePage, downloadFiles, groupAttachments } from '../services/tistory.ts';
 import { extractConfigAndManual } from '../services/extractor.ts';
 import { parseGameConfig } from '../services/config-parser.ts';
+import type { ExecutionOption } from '../services/config-parser.ts';
 import { createGame, createDownloadFile, getGameByCode, updateGame } from '../services/database.ts';
 import { getGameDir } from '../utils/paths.ts';
 import { MultiProgress } from '../ui/multi-progress.ts';
 import { checkAndInstall7zip } from '../utils/deps.ts';
+
+// Collect all unique launcher types from options tree
+function collectLauncherTypes(options: ExecutionOption[]): Set<string> {
+  const types = new Set<string>();
+  for (const opt of options) {
+    if (opt.executer) {
+      types.add(opt.executer);
+    }
+    if (opt.children) {
+      const childTypes = collectLauncherTypes(opt.children);
+      childTypes.forEach(t => types.add(t));
+    }
+  }
+  return types;
+}
+
+// Determine the primary launcher type for display (prioritize runnable options)
+function determineLauncherType(options: ExecutionOption[]): string {
+  const types = collectLauncherTypes(options);
+
+  // Priority: dosbox > w98kr > windows > pcem
+  if (types.has('dosbox')) return 'dosbox';
+  if (types.has('w98kr')) return 'w98kr';
+  if (types.has('windows')) return 'windows';
+  if (types.has('pcem')) return 'pcem';
+
+  return 'dosbox';
+}
 
 // Core download function - can be called from search or direct URL input
 export async function downloadGameFromUrl(url: string): Promise<boolean> {
@@ -127,13 +156,12 @@ ${pc.bold('다운로드할 파일:')}
     const config = await parseGameConfig(gameDir);
 
     if (config) {
-      // Determine launcher type from first execution option
-      const firstOption = config.executionOptions[0];
-      const launcherType = firstOption?.executer || 'dosbox';
+      // Determine launcher type from all execution options
+      const launcherType = determineLauncherType(config.executionOptions);
 
       await updateGame(game.id, {
         name: config.info.name,
-        genre: config.info.genre || config.info.genreKr,
+        genre: config.info.genreKr || config.info.genre,
         launcherType,
       });
     }

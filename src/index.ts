@@ -8,7 +8,7 @@ import { downloadGame } from './commands/download.ts';
 import { searchOnlineGames } from './commands/search.ts';
 import { ensureAppDirs } from './utils/paths.ts';
 
-const VERSION = '1.0.0';
+const VERSION = '0.1.3';
 
 async function main(): Promise<void> {
   // Initialize

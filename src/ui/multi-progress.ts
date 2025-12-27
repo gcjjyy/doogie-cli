@@ -7,11 +7,15 @@ interface FileProgress {
   status: 'waiting' | 'downloading' | 'done' | 'error';
 }
 
+const MAX_DISPLAY_FILES = 5;
+
 export class MultiProgress {
   private files: Map<string, FileProgress> = new Map();
   private fileOrder: string[] = [];
+  private completedOrder: string[] = [];  // Track completion order
   private isStarted = false;
   private maxFilenameLen = 30;
+  private lastDisplayedLines = 0;
 
   constructor(filenames: string[]) {
     this.fileOrder = filenames;
@@ -27,10 +31,7 @@ export class MultiProgress {
 
   start(): void {
     this.isStarted = true;
-    // Print initial state
-    for (const filename of this.fileOrder) {
-      console.log(this.formatLine(filename));
-    }
+    this.render();
   }
 
   updateProgress(filename: string, downloaded: number, total: number): void {
@@ -50,6 +51,7 @@ export class MultiProgress {
 
     file.status = 'done';
     file.downloaded = file.total || 1;
+    this.completedOrder.push(filename);
     this.render();
   }
 
@@ -62,22 +64,73 @@ export class MultiProgress {
   }
 
   finish(): void {
-    // Move cursor to after the progress display
-    // Already at the right position after last render
+    // Final render to show completion
+    this.render();
+  }
+
+  private getActiveFiles(): string[] {
+    // Get files that are currently downloading
+    const downloading = this.fileOrder.filter(f => {
+      const file = this.files.get(f);
+      return file && file.status === 'downloading';
+    });
+
+    // Show downloading files first, then fill remaining slots with recently completed
+    const result: string[] = [...downloading];
+    const remainingSlots = MAX_DISPLAY_FILES - result.length;
+
+    if (remainingSlots > 0) {
+      // Add most recently completed files (from completedOrder, most recent last)
+      const recentDone = this.completedOrder.slice(-remainingSlots);
+      result.push(...recentDone);
+    }
+
+    return result.slice(0, MAX_DISPLAY_FILES);
+  }
+
+  private getStats(): { done: number; total: number; errors: number } {
+    let done = 0;
+    let errors = 0;
+    for (const file of this.files.values()) {
+      if (file.status === 'done') done++;
+      if (file.status === 'error') errors++;
+    }
+    return { done, total: this.fileOrder.length, errors };
   }
 
   private render(): void {
     if (!this.isStarted) return;
 
-    // Move cursor up to the start of our progress display
-    const linesToMove = this.fileOrder.length;
-    process.stdout.write(`\x1b[${linesToMove}A`);
-
-    // Redraw all lines
-    for (const filename of this.fileOrder) {
-      // Clear line and print new content
-      process.stdout.write('\x1b[2K' + this.formatLine(filename) + '\n');
+    // Move cursor up to clear previous display
+    if (this.lastDisplayedLines > 0) {
+      process.stdout.write(`\x1b[${this.lastDisplayedLines}A`);
     }
+
+    const activeFiles = this.getActiveFiles();
+    const stats = this.getStats();
+
+    // Build output lines
+    const lines: string[] = [];
+
+    // Status line
+    const statusLine = `${pc.bold('다운로드:')} ${pc.green(String(stats.done))}/${stats.total} 완료${stats.errors > 0 ? pc.red(` (${stats.errors} 실패)`) : ''}`;
+    lines.push(statusLine);
+
+    // Active downloads
+    if (activeFiles.length > 0) {
+      for (const filename of activeFiles) {
+        lines.push(this.formatLine(filename));
+      }
+    } else if (stats.done < stats.total) {
+      lines.push(pc.dim('  대기 중...'));
+    }
+
+    // Print lines
+    for (const line of lines) {
+      process.stdout.write('\x1b[2K' + line + '\n');
+    }
+
+    this.lastDisplayedLines = lines.length;
   }
 
   private formatLine(filename: string): string {
@@ -113,10 +166,14 @@ export class MultiProgress {
         break;
       }
 
-      case 'done':
+      case 'done': {
         statusIcon = pc.green('✓');
-        progressBar = pc.green('Done');
+        const barWidth = 20;
+        const bar = pc.green('█'.repeat(barWidth));
+        const sizeStr = this.formatSize(file.downloaded, file.total);
+        progressBar = `${bar} ${pc.green('100%')} ${sizeStr}`;
         break;
+      }
 
       case 'error':
         statusIcon = pc.red('✗');

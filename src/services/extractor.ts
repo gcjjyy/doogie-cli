@@ -1,6 +1,6 @@
 import { spawn } from 'bun';
 import { existsSync } from 'fs';
-import { readdir, mkdir } from 'fs/promises';
+import { readdir, mkdir, unlink } from 'fs/promises';
 import { join, dirname } from 'path';
 import { getPlatform } from '../utils/platform.ts';
 
@@ -147,6 +147,17 @@ export function findFirstSplitFile(files: string[]): string | null {
   return null;
 }
 
+async function delete7zFiles(gameDir: string, pattern: string): Promise<void> {
+  const files = await readdir(gameDir);
+  const matchingFiles = files.filter((f) => f.toLowerCase().includes(pattern.toLowerCase()));
+
+  for (const file of matchingFiles) {
+    if (file.match(/\.7z$/i) || file.match(/\.7z\.\d+$/i)) {
+      await unlink(join(gameDir, file)).catch(() => {});
+    }
+  }
+}
+
 export async function extractConfigAndManual(gameDir: string): Promise<void> {
   const files = await readdir(gameDir);
 
@@ -157,6 +168,8 @@ export async function extractConfigAndManual(gameDir: string): Promise<void> {
     const configDestDir = join(gameDir, 'Config');
     await extract7z(configPath, configDestDir);
   }
+  // Delete Config 7z files after extraction
+  await delete7zFiles(gameDir, '_config');
 
   // Extract Manual files
   const manualFiles = files.filter((f) => f.toLowerCase().includes('_manual'));
@@ -171,6 +184,8 @@ export async function extractConfigAndManual(gameDir: string): Promise<void> {
       await extract7z(manualPath, manualDestDir);
     }
   }
+  // Delete Manual 7z files after extraction
+  await delete7zFiles(gameDir, '_manual');
 }
 
 export async function extractGameArchive(gameDir: string): Promise<string> {
@@ -197,6 +212,11 @@ export async function extractGameArchive(gameDir: string): Promise<string> {
   const gameDestDir = join(gameDir, 'Game');
 
   await extract7z(archivePath, gameDestDir);
+
+  // Delete game 7z files after extraction
+  for (const file of gameFiles) {
+    await unlink(join(gameDir, file)).catch(() => {});
+  }
 
   return gameDestDir;
 }

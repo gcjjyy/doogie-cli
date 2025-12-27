@@ -52,3 +52,20 @@ export interface AppConfig {
   tempPath: string;
   dosboxPath?: string;
 }
+
+// W98KR (Windows 98 Korean) image types
+export type ExecuterType = 'dosbox' | 'w98kr' | 'pcem' | 'windows';
+
+export interface W98krInfo {
+  name: string;           // e.g., 'W98KR_Daum_Final'
+  imagePath: string;      // Path to Win98.img
+  diskParams: string;     // e.g., '512,63,64,520'
+  version: string;        // From Ver.txt
+}
+
+export interface DiskGeometry {
+  sectorSize: number;     // 512
+  sectorsPerTrack: number; // 63
+  heads: number;          // 64
+  cylinders: number;      // varies
+}

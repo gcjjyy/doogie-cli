@@ -11,18 +11,22 @@
 > ⚠️ 이 프로젝트는 아직 개발 초기 단계입니다.
 
 - **지원 플랫폼**: macOS, Linux (Windows 미지원)
-- **지원 게임**: 현재 DOS 게임만 지원됩니다.
-- **지원 실행기**: DOSBox-X, DOSBox만 지원됩니다. 오리지널 두기 런처의 다른 실행기(Windows 등)는 지원되지 않습니다.
+- **지원 게임**: DOS 게임 및 Windows 98 게임
+- **실행기 대체**:
+  - DOSBox SVN Daum → **DOSBox-X**로 대체 실행
+  - W98KR (DOSBox Daum용) → **W98KR-x** (DOSBox-X용)로 대체 실행
+  - PCem → 현재 미지원 (향후 지원 예정)
 - **테스트 환경**: 현재 macOS에서만 테스트되었습니다. Linux는 아직 테스트되지 않았습니다.
 
 ## 주요 기능
 
 - 온라인 게임 검색 및 다운로드
 - 설치된 게임 목록 관리
-- DOSBox/DOSBox-X를 통한 게임 실행
+- DOSBox/DOSBox-X를 통한 DOS 게임 실행
+- **Windows 98 게임 지원 (W98KR-x)** - DOSBox-X에서 Windows 98 부팅
 - CD 이미지 자동 마운트
 - 게임별 CPU 사이클 및 설정 자동 적용
-- **macOS: 필요한 프로그램 자동 설치** (Homebrew, DOSBox-X, 7-Zip)
+- **macOS: 필요한 프로그램 자동 설치** (Homebrew, DOSBox-X, 7-Zip, W98KR-x)
 
 ## 요구 사항
 
@@ -98,6 +102,18 @@ bun run build:linux    # Linux
 2. 최초 실행 시 자동으로 압축 해제
 3. DOSBox-X/DOSBox로 게임 실행
 
+### Windows 98 게임 (W98KR)
+
+일부 게임(예: 서풍의 광시곡)은 Windows 98 환경이 필요합니다.
+
+- 게임 실행 시 W98KR 이미지가 필요하면 자동으로 다운로드를 제안합니다
+- **W98KR-x 이미지 사용**: DOSBox-X 전용으로 최적화된 Windows 98 이미지 (약 94MB)
+- W98KR은 DOSBox-X에서 Windows 98을 부팅하여 게임을 실행합니다
+- **DOSBox-X 필수**: 기본 DOSBox는 Windows 98을 지원하지 않습니다
+
+> **참고**: 원본 두기 런처는 DOSBox SVN Daum을 사용하지만, macOS/Linux에서 빌드가 어렵기 때문에
+> 이 CLI는 DOSBox-X + W98KR-x 조합을 대안으로 사용합니다.
+
 ## 데이터 저장 위치
 
 모든 데이터는 `~/.doogie-cli/` 디렉토리에 저장됩니다:
@@ -105,6 +121,7 @@ bun run build:linux    # Linux
 ```
 ~/.doogie-cli/
 ├── games/          # 다운로드된 게임 파일
+├── w98kr-x/        # W98KR-x 이미지 (필요시 자동 다운로드)
 ├── doogie.db       # 게임 데이터베이스
 └── temp/           # 임시 파일
 ```

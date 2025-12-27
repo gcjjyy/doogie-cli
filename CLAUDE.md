@@ -49,8 +49,8 @@ bun run tsc          # 타입 체크
 
 ## 빌드 타겟
 - macOS arm64/x64
-- Windows x64
 - Linux x64
+- (Windows 미지원 - 공식 두기 런처 사용)
 
 ## 파일명 패턴 (두기의 고전게임)
 - 게임: `{CODE}_{DATE}.7z.001` ~ `.xxx` (분할 압축)
@@ -61,6 +61,49 @@ bun run tsc          # 타입 체크
 - DOSBox-X 우선 탐지 (권장)
 - DOSBox-X가 없으면 원본 DOSBox 사용
 - 플랫폼별 자동 경로 탐지
+
+## W98KR (Windows 98) 지원
+일부 게임(예: 서풍의 광시곡)은 Windows 98 환경이 필요합니다.
+
+- **W98KR 저장 경로**: `~/.doogie-cli/w98kr/`
+- **필요 조건**: DOSBox-X (기본 DOSBox는 미지원)
+- **자동 설치**: 게임 실행 시 W98KR이 필요하면 자동으로 다운로드 제안
+
+### W98KR 이미지 종류
+| 이미지 | 용도 | URL | 크기 |
+|--------|------|-----|------|
+| W98KR-x | DOSBox-X 전용 (권장) | https://nemo838.tistory.com/6566 | ~94MB |
+| W98KR_Daum_Final | DOSBox Daum 전용 | https://nemo838.tistory.com/6556 | ~234MB |
+
+DOSBox-X 사용 시 자동으로 W98KR-x 이미지를 다운로드합니다.
+
+### W98KR 이미지 구조
+```
+W98KR-x/  또는  W98KR_Daum_Final/
+├── Win98.img      # Windows 98 하드 디스크 이미지
+├── DiskParm.txt   # 디스크 geometry (512,63,64,520)
+└── Ver.txt        # 버전 정보
+```
+
+### W98KR 게임 autoexec.conf 형식
+```
+[SELECT]
+[NEW]
+TITLE:도스박스로 구동
+|___[SELECT]
+|___[NEW]
+|___TITLE:1배속 - 오리지날 버전
+|___EXECUTER:W98KR_Daum_Final     # W98KR 실행기 사용
+|___CFGFILE:[KR98]D3D_Daum_Final.conf  # DOSBox-X 설정 파일
+image.img                          # 게임 하드 디스크 이미지
+512,63,64,703                      # 디스크 geometry
+```
+
+### 실행 방식
+1. Win98.img를 C: 드라이브로 마운트 (IDE primary master)
+2. 게임 image.img를 D: 드라이브로 마운트 (IDE primary slave)
+3. DOSBox-X로 Windows 98 부팅
+4. Windows 98 안에서 D: 드라이브의 게임 실행
 
 ## 데이터베이스 스키마
 - `games`: id, name, code, genre, sourceUrl, launcherType, isExtracted, localPath

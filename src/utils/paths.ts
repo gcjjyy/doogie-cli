@@ -24,6 +24,14 @@ export function getConfigPath(): string {
   return join(getAppDir(), 'config.json');
 }
 
+export function getW98krXDir(): string {
+  return join(getAppDir(), 'w98kr-x');
+}
+
+export function getW98krXImagePath(imageName: string): string {
+  return join(getW98krXDir(), imageName);
+}
+
 export function getGameDir(gameCode: string): string {
   return join(getGamesDir(), gameCode);
 }
