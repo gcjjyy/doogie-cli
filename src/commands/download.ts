@@ -28,8 +28,9 @@ function collectLauncherTypes(options: ExecutionOption[]): Set<string> {
 function determineLauncherType(options: ExecutionOption[]): string {
   const types = collectLauncherTypes(options);
 
-  // Priority: dosbox > w98kr > windows > pcem
+  // Priority: dosbox > w95kr > w98kr > windows > pcem
   if (types.has('dosbox')) return 'dosbox';
+  if (types.has('w95kr')) return 'w95kr';
   if (types.has('w98kr')) return 'w98kr';
   if (types.has('windows')) return 'windows';
   if (types.has('pcem')) return 'pcem';

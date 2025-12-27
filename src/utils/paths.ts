@@ -32,6 +32,14 @@ export function getW98krXImagePath(imageName: string): string {
   return join(getW98krXDir(), imageName);
 }
 
+export function getW95krXDir(): string {
+  return join(getAppDir(), 'w95kr-x');
+}
+
+export function getW95krXImagePath(imageName: string): string {
+  return join(getW95krXDir(), imageName);
+}
+
 export function getGameDir(gameCode: string): string {
   return join(getGamesDir(), gameCode);
 }

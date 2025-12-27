@@ -90,28 +90,52 @@ gh release create v0.x.x \
 - DOSBox-X가 없으면 원본 DOSBox 사용
 - 플랫폼별 자동 경로 탐지
 
-## W98KR (Windows 98) 지원
-일부 게임(예: 서풍의 광시곡)은 Windows 98 환경이 필요합니다.
+## Win9x (Windows 95/98) 지원
+일부 게임은 Windows 95/98 환경이 필요합니다.
 
-- **W98KR 저장 경로**: `~/.doogie-cli/w98kr/`
+- **W95KR 저장 경로**: `~/.doogie-cli/w95kr-x/`
+- **W98KR 저장 경로**: `~/.doogie-cli/w98kr-x/`
 - **필요 조건**: DOSBox-X (기본 DOSBox는 미지원)
-- **자동 설치**: 게임 실행 시 W98KR이 필요하면 자동으로 다운로드 제안
+- **자동 설치**: 게임 실행 시 필요한 이미지를 자동으로 다운로드 제안
 
-### W98KR 이미지 종류
+### Win9x 이미지 종류
 | 이미지 | 용도 | URL | 크기 |
 |--------|------|-----|------|
-| W98KR-x | DOSBox-X 전용 (권장) | https://nemo838.tistory.com/6566 | ~94MB |
-| W98KR_Daum_Final | DOSBox Daum 전용 | https://nemo838.tistory.com/6556 | ~234MB |
+| W95KR-x | Windows 95 (DOSBox-X) | https://nemo838.tistory.com/6530 | ~50MB |
+| W98KR-x | Windows 98 (DOSBox-X) | https://nemo838.tistory.com/6566 | ~94MB |
 
-DOSBox-X 사용 시 자동으로 W98KR-x 이미지를 다운로드합니다.
+### 게임별 Win9x 버전 판단
+1. `edit.conf`의 `0|0` 값 확인: `W95KR_*` 또는 `W98KR_*`
+2. `CFGFILE`의 접두사: `[KR95]` 또는 `[KR98]`
 
-### W98KR 이미지 구조
+DOSBox-X 사용 시 자동으로 적절한 이미지를 다운로드합니다.
+
+### Win9x 이미지 구조
 ```
-W98KR-x/  또는  W98KR_Daum_Final/
-├── Win98.img      # Windows 98 하드 디스크 이미지
-├── DiskParm.txt   # 디스크 geometry (512,63,64,520)
-└── Ver.txt        # 버전 정보
+W95KR-x/  또는  W98KR-x/
+├── Win95.img 또는 Win98.img   # Windows 하드 디스크 이미지
+├── DiskParm.txt               # 디스크 geometry (512,63,16,489)
+├── Ver.txt                    # 버전 정보
+├── DX.REG                     # 디스플레이 설정 레지스트리
+└── DGGL/                      # 두기 런처 설정 파일들
+    ├── Res/                   # 해상도 레지스트리 (640x8.REG 등)
+    ├── D3D/                   # D3D 설정
+    ├── DDRAW/                 # DDRAW 설정
+    └── Volume/                # 볼륨 설정
 ```
+
+### Win9x 디스플레이 설정 (DX.REG)
+게임 실행 전 Win95/98.img의 DX.REG를 업데이트하여 디스플레이 설정을 적용합니다.
+
+```reg
+[HKEY_LOCAL_MACHINE\Config\0001\Display\Settings]
+"BitsPerPixel"="8"        # 8=256색, 16=하이컬러
+"Resolution"="640,480"
+```
+
+- Default.conf 기본값: `640x8` (256색)
+- Windows 부팅 시 AUTOEXEC.BAT에서 `regedit c:\dx.reg` 실행
+- 지정된 해상도/색상으로 Windows 시작
 
 ### W98KR 게임 autoexec.conf 형식
 ```
@@ -176,13 +200,26 @@ editor.exe
 ```
 
 ### edit.conf 형식
+게임별 특화설정 파일. `섹션인덱스|옵션인덱스|값` 형식으로 Default.conf 값을 오버라이드합니다.
+
 ```
 ver.23.01.10                    # 버전 (YY.MM.DD)
-5|5|true                        # 설정1
-8|1|486                         # CPU 타입?
-8|2|25000                       # CPU 사이클?
-6|1|false                       # 설정4
+0|0|W95KR_Daum_Final            # 섹션0(default), 옵션0(실행기) = W95KR
+7|3|256                         # 섹션7(dosbox), 옵션3(memsize) = 256MB
+8|0|dynamic                     # 섹션8(cpu), 옵션0(core) = dynamic
+8|1|pentium                     # 섹션8(cpu), 옵션1(cputype) = pentium
+8|2|max                         # 섹션8(cpu), 옵션2(cycles) = max
 ```
+
+#### 섹션 인덱스 (ver.23.01.10)
+| 인덱스 | 섹션명 | 주요 옵션 |
+|--------|--------|-----------|
+| 0 | default | 실행기 선택 |
+| 1 | win9x | 디스플레이 설정 |
+| 7 | dosbox | memsize, vmemsize |
+| 8 | cpu | core, cputype, cycles |
+
+**주의**: 버전에 따라 섹션 인덱스가 다를 수 있음
 
 ### info.txt 형식
 ```

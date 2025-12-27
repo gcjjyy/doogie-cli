@@ -31,6 +31,17 @@ export interface GameConfigInfo {
   updateLog?: string;
 }
 
+export interface Win9xDisplayOptions {
+  vgaDriver?: string;      // VGA driver: 'new', 'old', etc
+  resolution?: string;     // Resolution like '640x8' (8=8-bit, 16=16-bit, 32=32-bit)
+  bitsPerPixel?: number;   // Derived: 8, 16, or 32
+  width?: number;          // Derived: 640, 800, 1024, etc
+  ddraw?: boolean;         // DirectDraw acceleration
+  d3d?: boolean;           // Direct3D acceleration
+  threeDfx?: boolean;      // 3DFX Glide acceleration
+  midi?: string;           // MIDI driver: 'SBFM', 'MPU', etc
+}
+
 export interface W98krConfig {
   w98krName?: string;      // W98KR image name (0|0)
   memsize?: number;        // Memory size in MB (7|3)
@@ -38,13 +49,14 @@ export interface W98krConfig {
   cpuType?: string;        // CPU type: pentium, 486, etc (8|1)
   cpuCycles?: string;      // CPU cycles: max, auto, or number (8|2)
   mouseEmulation?: string; // Mouse emulation: emu, integration (20|0)
+  displayOptions?: Win9xDisplayOptions;  // Win9x display options
 }
 
 export interface ExecutionOption {
   title: string;
   cd?: string;
   executable?: string;    // Optional - menu items with children may not have executable
-  executer?: 'dosbox' | 'w98kr' | 'pcem' | 'windows';
+  executer?: 'dosbox' | 'w98kr' | 'w95kr' | 'pcem' | 'windows';
   executerName?: string;  // Original executer name like 'W98KR_Daum_Final'
   cfgFile?: string;       // Config file for W98KR like '[KR98]D3D_Daum_Final.conf'
   diskGeometry?: string;  // Disk geometry like '512,63,64,703'
@@ -58,6 +70,8 @@ export interface GameConfig {
   executionOptions: ExecutionOption[];
   cpuCycles?: number;
   cpuType?: string;
+  windowsImage?: string;  // W95KR_xxx or W98KR_xxx from edit.conf
+  resolution?: Win9xResolution;  // Win9x display resolution from edit.conf
 }
 
 function parseInfoTxt(content: string): { name: string; nameEn?: string; updateLog?: string } {
@@ -98,9 +112,11 @@ function parseExtraInfoTxt(content: string): { developer?: string; language?: st
   };
 }
 
-function parseExecuterType(executerName: string): { type: 'dosbox' | 'w98kr' | 'pcem' | 'windows'; name: string } {
+function parseExecuterType(executerName: string): { type: 'dosbox' | 'w98kr' | 'w95kr' | 'pcem' | 'windows'; name: string } {
   const lower = executerName.toLowerCase();
-  if (lower.startsWith('w98kr') || lower.startsWith('w9x')) {
+  if (lower.startsWith('w95kr') || lower.includes('w95')) {
+    return { type: 'w95kr', name: executerName };
+  } else if (lower.startsWith('w98kr') || lower.startsWith('w9x')) {
     return { type: 'w98kr', name: executerName };
   } else if (lower.startsWith('pcem') || lower.includes('pcem')) {
     return { type: 'pcem', name: executerName };
@@ -108,6 +124,16 @@ function parseExecuterType(executerName: string): { type: 'dosbox' | 'w98kr' | '
     return { type: 'windows', name: executerName };
   }
   return { type: 'dosbox', name: executerName };
+}
+
+// Parse CFGFILE to determine Windows version (KR95 or KR98)
+function parseCfgFileVersion(cfgFile: string): 'w95kr' | 'w98kr' | null {
+  if (cfgFile.includes('[KR95]')) {
+    return 'w95kr';
+  } else if (cfgFile.includes('[KR98]')) {
+    return 'w98kr';
+  }
+  return null;
 }
 
 function formatIndex(n: number): string {
@@ -136,7 +162,7 @@ function parseMenuItems(
   startIdx: number,
   targetDepth: number,
   parentPath: string,
-  parentExecuter: 'dosbox' | 'w98kr' | 'pcem' | 'windows' = 'dosbox'
+  parentExecuter: 'dosbox' | 'w98kr' | 'w95kr' | 'pcem' | 'windows' = 'dosbox'
 ): { options: ExecutionOption[]; endIdx: number } {
   const options: ExecutionOption[] = [];
   let i = startIdx;
@@ -179,6 +205,13 @@ function parseMenuItems(
     if (content === '[NEW]' || content === '[WIN]') {
       // Save previous option
       if (currentOption && currentOption.title) {
+        // If option has image.img + geometry but no explicit Windows executer, it's a Windows game
+        if (currentOption.executable?.toLowerCase().endsWith('.img') &&
+            currentOption.diskGeometry &&
+            currentOption.executer === 'dosbox') {
+          // Default to w95kr for Windows games without explicit executer
+          currentOption.executer = 'w95kr';
+        }
         options.push(currentOption as ExecutionOption);
       }
       itemIndex++;
@@ -211,6 +244,12 @@ function parseMenuItems(
         currentExecuter = execInfo.type;
       } else if (content.startsWith('CFGFILE:')) {
         currentOption.cfgFile = content.slice(8);
+        // Parse Windows version from CFGFILE
+        const winVersion = parseCfgFileVersion(currentOption.cfgFile);
+        if (winVersion) {
+          currentOption.executer = winVersion;
+          currentExecuter = winVersion;
+        }
       } else if (content.match(/\.(exe|com|bat|img)$/i)) {
         currentOption.executable = content;
       } else if (content.match(/^\d+,\d+,\d+,\d+$/)) {
@@ -241,6 +280,13 @@ function parseMenuItems(
 
   // Save last option
   if (currentOption && currentOption.title) {
+    // If option has image.img + geometry but no explicit Windows executer, it's a Windows game
+    if (currentOption.executable?.toLowerCase().endsWith('.img') &&
+        currentOption.diskGeometry &&
+        currentOption.executer === 'dosbox') {
+      // Default to w95kr for Windows games without explicit executer
+      currentOption.executer = 'w95kr';
+    }
     options.push(currentOption as ExecutionOption);
   }
 
@@ -299,8 +345,11 @@ function parseW98krConf(content: string): W98krConfig {
       if (code === '0' && subCode === '0') {
         config.w98krName = value;
       } else if (code === '7' && subCode === '3') {
+        // 7|3 = DOSBox memory size in MB
         const num = parseInt(value, 10);
-        if (!isNaN(num)) config.memsize = num;
+        if (!isNaN(num)) {
+          config.memsize = num;
+        }
       } else if (code === '8' && subCode === '0') {
         config.cpuCore = value;
       } else if (code === '8' && subCode === '1') {
@@ -316,20 +365,65 @@ function parseW98krConf(content: string): W98krConfig {
   return config;
 }
 
-function parseEditConf(content: string): { cpuCycles?: number; cpuType?: string } {
+export interface Win9xResolution {
+  width: number;
+  height: number;
+  bitsPerPixel: number;
+}
+
+function parseResolutionString(resStr: string): Win9xResolution | null {
+  // Format: {width}x{bits} e.g., "640x8", "800x16", "1024x32"
+  const match = resStr.match(/^(\d+)x(\d+)$/);
+  if (!match) return null;
+
+  const width = parseInt(match[1]!, 10);
+  const bits = parseInt(match[2]!, 10);
+
+  // Derive height from width (standard resolutions)
+  let height: number;
+  switch (width) {
+    case 640: height = 480; break;
+    case 800: height = 600; break;
+    case 1024: height = 768; break;
+    case 1152: height = 864; break;
+    case 1280: height = 1024; break;
+    case 1600: height = 1200; break;
+    default: height = 480; break;
+  }
+
+  return { width, height, bitsPerPixel: bits };
+}
+
+function parseEditConf(content: string): { cpuCycles?: number; cpuType?: string; windowsImage?: string; resolution?: Win9xResolution } {
   const lines = content.split('\n').map(l => l.trim()).filter(l => l);
   let cpuCycles: number | undefined;
   let cpuType: string | undefined;
+  let windowsImage: string | undefined;
+  let resolution: Win9xResolution | undefined;
 
   for (const line of lines) {
     if (line.startsWith('ver.')) continue;
 
     const parts = line.split('|');
     if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
-      // Pattern: 8|2|25000 might be CPU cycles
       const code = parts[0];
       const subCode = parts[1];
       const value = parts[2];
+
+      // 0|0 = Windows image name (W95KR_xxx or W98KR_xxx)
+      if (code === '0' && subCode === '0') {
+        windowsImage = value;
+      }
+
+      // Check for resolution pattern (e.g., "800x8", "640x16")
+      // This can appear in various sections depending on config version
+      const resMatch = value.match(/^\d+x\d+$/);
+      if (resMatch) {
+        const parsed = parseResolutionString(value);
+        if (parsed) {
+          resolution = parsed;
+        }
+      }
 
       if (code === '8' && subCode === '2') {
         const num = parseInt(value, 10);
@@ -342,7 +436,7 @@ function parseEditConf(content: string): { cpuCycles?: number; cpuType?: string 
     }
   }
 
-  return { cpuCycles, cpuType };
+  return { cpuCycles, cpuType, windowsImage, resolution };
 }
 
 export async function parseGameConfig(gameDir: string): Promise<GameConfig | null> {
@@ -402,6 +496,30 @@ export async function parseGameConfig(gameDir: string): Promise<GameConfig | nul
       const editConfig = parseEditConf(content);
       config.cpuCycles = editConfig.cpuCycles;
       config.cpuType = editConfig.cpuType;
+      config.windowsImage = editConfig.windowsImage;
+      config.resolution = editConfig.resolution;
+
+      // Update executer based on windowsImage for options that use image.img
+      if (editConfig.windowsImage) {
+        const isW95 = editConfig.windowsImage.toLowerCase().includes('w95');
+        const isW98 = editConfig.windowsImage.toLowerCase().includes('w98');
+        const correctExecuter = isW95 ? 'w95kr' : isW98 ? 'w98kr' : null;
+
+        if (correctExecuter) {
+          // Update all options that have image.img + geometry (Windows games)
+          const updateExecuter = (options: ExecutionOption[]) => {
+            for (const opt of options) {
+              if (opt.executable?.toLowerCase().endsWith('.img') && opt.diskGeometry) {
+                opt.executer = correctExecuter;
+              }
+              if (opt.children) {
+                updateExecuter(opt.children);
+              }
+            }
+          };
+          updateExecuter(config.executionOptions);
+        }
+      }
     }
 
     return config;

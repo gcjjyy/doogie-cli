@@ -4,9 +4,9 @@ import Table from 'cli-table3';
 import { rm } from 'fs/promises';
 import { getAllGames, searchGames, getGameByCode, deleteGame, deleteDownloadFilesByGameId } from '../services/database.ts';
 import { extractGameArchive, extractConfigAndManual } from '../services/extractor.ts';
-import { launchGame, launchGameWithConfig, findGameExecutable, launchW98krGame, isW98krInstalled } from '../services/launcher.ts';
+import { launchGame, launchGameWithConfig, findGameExecutable, launchW98krGame, launchW95krGame, isW98krInstalled, isW95krInstalled } from '../services/launcher.ts';
 import { parseGameConfig, getFirstDosboxOption, requiresW98kr } from '../services/config-parser.ts';
-import { downloadW98kr } from '../services/w98kr.ts';
+import { downloadW98kr, downloadW95kr } from '../services/w98kr.ts';
 import { updateGame } from '../services/database.ts';
 import { getGameDir } from '../utils/paths.ts';
 import { checkAndInstallDosbox, checkAndInstall7zip } from '../utils/deps.ts';
@@ -30,12 +30,26 @@ function collectLauncherTypes(options: ExecutionOption[]): Set<string> {
 }
 
 // Get all launcher types as display string
-function getLauncherTypesDisplay(options: ExecutionOption[]): string {
+function getLauncherTypesDisplay(options: ExecutionOption[], windowsImage?: string): string {
   const types = collectLauncherTypes(options);
   const displayNames: string[] = [];
 
-  // Order: W98KR, DOSBox, Windows, PCem
-  if (types.has('w98kr')) displayNames.push('W98KR');
+  // Order: W95KR, W98KR, DOSBox, Windows, PCem
+  // Use full windowsImage name if available (e.g., W95KR_Daum_Final instead of just W95KR)
+  if (types.has('w95kr')) {
+    if (windowsImage?.toLowerCase().includes('w95')) {
+      displayNames.push(windowsImage);
+    } else {
+      displayNames.push('W95KR');
+    }
+  }
+  if (types.has('w98kr')) {
+    if (windowsImage?.toLowerCase().includes('w98')) {
+      displayNames.push(windowsImage);
+    } else {
+      displayNames.push('W98KR');
+    }
+  }
   if (types.has('dosbox')) displayNames.push('DOSBox');
   if (types.has('windows')) displayNames.push('Windows');
   if (types.has('pcem')) displayNames.push('PCem');
@@ -47,7 +61,8 @@ function getLauncherTypesDisplay(options: ExecutionOption[]): string {
 function determineLauncherType(options: ExecutionOption[]): string {
   const types = collectLauncherTypes(options);
 
-  // Priority: w98kr > dosbox > windows > pcem (prefer actually runnable)
+  // Priority: w95kr > w98kr > dosbox > windows > pcem (prefer actually runnable)
+  if (types.has('w95kr')) return 'w95kr';
   if (types.has('w98kr')) return 'w98kr';
   if (types.has('dosbox')) return 'dosbox';
   if (types.has('windows')) return 'windows';
@@ -91,7 +106,7 @@ async function displayGamesTable(games: Game[]): Promise<void> {
     let genre: string;
 
     if (config) {
-      launcherDisplay = getLauncherTypesDisplay(config.executionOptions);
+      launcherDisplay = getLauncherTypesDisplay(config.executionOptions, config.windowsImage);
       genre = config.info.genreKr || config.info.genre || '-';
     } else {
       // Fallback to database values
@@ -382,6 +397,40 @@ async function runGame(game: Game): Promise<void> {
     return;
   }
 
+  // Check if this option requires W95KR (Windows 95 games)
+  if (selectedOption.executer === 'w95kr') {
+    const w95krName = 'W95KR-x';
+    const downloadSize = '약 50MB';
+
+    if (!isW95krInstalled(w95krName)) {
+      p.log.warn('이 게임은 Windows 95 이미지가 필요합니다.');
+      p.log.info(`${w95krName}로 실행합니다.`);
+
+      const shouldInstall = await p.confirm({
+        message: `${w95krName} 이미지를 다운로드하시겠습니까? (${downloadSize})`,
+      });
+
+      if (p.isCancel(shouldInstall) || !shouldInstall) {
+        p.log.info('W95KR-x 이미지 없이는 이 게임을 실행할 수 없습니다.');
+        return;
+      }
+
+      const s = p.spinner();
+      s.start(`${w95krName} 이미지 다운로드 중...`);
+
+      try {
+        await downloadW95kr((message) => {
+          s.message(message);
+        });
+        s.stop(`${w95krName} 이미지 설치 완료!`);
+      } catch (error) {
+        s.stop(`${w95krName} 설치 실패`);
+        p.log.error(`설치 중 오류 발생: ${error}`);
+        return;
+      }
+    }
+  }
+
   // Check if this option requires W98KR (w98kr or windows options)
   if (selectedOption.executer === 'w98kr' || selectedOption.executer === 'windows') {
     // Always use W98KR-x image (DOSBox-X용)
@@ -420,7 +469,9 @@ async function runGame(game: Game): Promise<void> {
 
   // Show game info
   let executerInfo: string;
-  if (selectedOption.executer === 'w98kr' || selectedOption.executer === 'windows') {
+  if (selectedOption.executer === 'w95kr') {
+    executerInfo = `${pc.cyan('Windows 95')} (W95KR-x)`;
+  } else if (selectedOption.executer === 'w98kr' || selectedOption.executer === 'windows') {
     const originalImage = selectedOption.executerName || 'W98KR';
     executerInfo = `${pc.cyan('Windows 98')} (${originalImage} → W98KR-x)`;
   } else {
@@ -438,7 +489,9 @@ ${gameConfig.cpuCycles && selectedOption.executer !== 'w98kr' ? `${pc.dim('CPU C
   try {
     p.log.step(`${selectedOption.title} 실행 중...`);
 
-    if (selectedOption.executer === 'w98kr' || selectedOption.executer === 'windows') {
+    if (selectedOption.executer === 'w95kr') {
+      await launchW95krGame(gameExecDir, gameConfig, selectedOption);
+    } else if (selectedOption.executer === 'w98kr' || selectedOption.executer === 'windows') {
       await launchW98krGame(gameExecDir, gameConfig, selectedOption);
     } else {
       await launchGameWithConfig(gameExecDir, gameConfig, selectedOption);

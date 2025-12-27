@@ -16,9 +16,25 @@ function classifyFileType(filename: string): 'game' | 'config' | 'manual' {
 }
 
 function extractGameCode(filename: string): string | null {
-  // Extract game code from filename like "ED3_221010.7z.001"
-  const match = filename.match(/^([A-Za-z0-9]+_\d+)/);
-  return match && match[1] ? match[1] : null;
+  // Extract game code from filename like:
+  // - "SamHero_241212.7z.001" -> "SamHero_241212"
+  // - "KoumeiK_Win95_230601.7z.001" -> "KoumeiK_Win95_230601"
+  // - "SamHero_241212_Config.7z" -> "SamHero_241212"
+  // Pattern: {GameCode}_{Date} where Date is 6 digits (YYMMDD), GameCode can have underscores
+
+  // Match everything before _Config or _Manual suffix
+  const configMatch = filename.match(/^(.+_\d{6})_(?:Config|Manual)/i);
+  if (configMatch && configMatch[1]) {
+    return configMatch[1];
+  }
+
+  // Match everything before .7z (standard game files)
+  const standardMatch = filename.match(/^(.+_\d{6})\.7z/i);
+  if (standardMatch && standardMatch[1]) {
+    return standardMatch[1];
+  }
+
+  return null;
 }
 
 function cleanFilename(text: string): string {
@@ -150,6 +166,22 @@ export async function parseGamePage(url: string): Promise<GameInfo> {
 
   if (attachments.length === 0) {
     throw new Error('No attachments found on the page');
+  }
+
+  // If gameCode wasn't extracted during parsing, try again from Config files first
+  if (!gameCode) {
+    // Prioritize Config files for code extraction (they have cleaner names)
+    const configFile = attachments.find(a => a.fileType === 'config');
+    if (configFile) {
+      gameCode = extractGameCode(configFile.filename);
+    }
+    // Then try any file
+    if (!gameCode) {
+      for (const attachment of attachments) {
+        gameCode = extractGameCode(attachment.filename);
+        if (gameCode) break;
+      }
+    }
   }
 
   return {
