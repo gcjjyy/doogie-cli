@@ -388,39 +388,50 @@ export async function generateW98krConfig(
   await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
 
   // Build autoexec section for booting Windows 98
+  // 두기 런처 방식과 동일하게 구현
   let autoexec = '@echo off\n';
 
-  // Mount host folder containing Game.txt and DX.REG
-  autoexec += `MOUNT Y "${hostDir}"\n`;
-
-  // Mount Windows 98 as C: drive (IDE primary master)
-  autoexec += `IMGMOUNT C "${w98krInfo.imagePath}" -size ${w98krGeometry.sectorSize},${w98krGeometry.sectorsPerTrack},${w98krGeometry.heads},${w98krGeometry.cylinders} -ide 1m\n`;
-
-  // Copy Game.txt and DX.REG to C: drive
-  if (existsSync(join(hostDir, 'Game.txt'))) {
-    autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
+  // Mount CD-ROM on IDE secondary master (to avoid PnP detection issues on newer DOSBox-X)
+  if (cdImagePath) {
+    autoexec += `imgmount E "${cdImagePath}" -t cdrom -ide 2m > nul\n`;
   }
-  autoexec += 'COPY Y:\\DX.REG C:\\DX.REG\n';
-  autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
 
-  // Check if game uses disk image or folder-based
+  // Set DOSBox mixer volumes (두기 런처 기본값)
+  autoexec += 'MIXER MASTER 100 SPKR 100 GUS 100 SB 60 FM 60 MT32 100 CDAUDIO 100 > nul\n';
+
+  // Mount Windows 98 as C: drive on IDE primary master
+  autoexec += `imgmount C "${w98krInfo.imagePath}" -t hdd -fs fat -size ${w98krGeometry.sectorSize},${w98krGeometry.sectorsPerTrack},${w98krGeometry.heads},${w98krGeometry.cylinders} -ide 1m > nul\n`;
+
+  // Mount game disk (image or folder) on IDE primary slave
   if (option.diskGeometry && option.executable?.toLowerCase().endsWith('.img')) {
     // Disk image based game (e.g., W98KR games like 서풍의 광시곡)
     const gameGeometry = parseDiskGeometry(option.diskGeometry);
     const gameImagePath = join(gameDir, option.executable);
-    autoexec += `IMGMOUNT D "${gameImagePath}" -size ${gameGeometry.sectorSize},${gameGeometry.sectorsPerTrack},${gameGeometry.heads},${gameGeometry.cylinders} -ide 1s\n`;
+    autoexec += `imgmount D "${gameImagePath}" -t hdd -fs fat -size ${gameGeometry.sectorSize},${gameGeometry.sectorsPerTrack},${gameGeometry.heads},${gameGeometry.cylinders} -ide 1s > nul\n`;
   } else {
     // Folder-based game (e.g., [WIN] options like 포가튼사가 에디터)
-    autoexec += `MOUNT D "${gameDir}"\n`;
+    autoexec += `MOUNT D "${gameDir}" > nul\n`;
   }
 
-  // Mount CD-ROM if available (IDE secondary master)
-  if (cdImagePath) {
-    autoexec += `IMGMOUNT E "${cdImagePath}" -t cdrom -ide 2m\n`;
+  // Delete old registry files
+  autoexec += 'del C:\\DX.REG > nul\n';
+  autoexec += 'del C:\\GAME.REG > nul\n';
+
+  // Mount host folder and copy files to C: drive
+  autoexec += `Mount V "${hostDir}" > nul\n`;
+  autoexec += 'xcopy /e /y V:\\*.* C:\\ > nul\n';
+  autoexec += 'C: > nul\n';
+
+  // Copy game.lnk to D: drive if exists
+  if (existsSync(join(hostDir, 'game.lnk'))) {
+    autoexec += 'xcopy /e /y V:\\game.lnk D:\\ > nul\n';
   }
+
+  // Unmount temporary drive
+  autoexec += 'Mount -u V > nul\n';
 
   // Boot from C: drive
-  autoexec += 'BOOT C:\n';
+  autoexec += 'boot -l C > nul\n';
 
   // Get default Win9x settings and merge with custom settings from edit.conf
   let settings = getDefaultWin9xSettings();
@@ -596,39 +607,50 @@ export async function generateW95krConfig(
   await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
 
   // Build autoexec section for booting Windows 95
+  // 두기 런처 방식과 동일하게 구현
   let autoexec = '@echo off\n';
 
-  // Mount host folder containing Game.txt and DX.REG
-  autoexec += `MOUNT Y "${hostDir}"\n`;
-
-  // Mount Windows 95 as C: drive (IDE primary master)
-  autoexec += `IMGMOUNT C "${w95krInfo.imagePath}" -size ${w95krGeometry.sectorSize},${w95krGeometry.sectorsPerTrack},${w95krGeometry.heads},${w95krGeometry.cylinders} -ide 1m\n`;
-
-  // Copy Game.txt and DX.REG to C: drive
-  if (existsSync(join(hostDir, 'Game.txt'))) {
-    autoexec += 'COPY Y:\\Game.txt C:\\Game.txt\n';
+  // Mount CD-ROM on IDE secondary master (to avoid PnP detection issues on newer DOSBox-X)
+  if (cdImagePath) {
+    autoexec += `imgmount E "${cdImagePath}" -t cdrom -ide 2m > nul\n`;
   }
-  autoexec += 'COPY Y:\\DX.REG C:\\DX.REG\n';
-  autoexec += 'MOUNT -u Y\n';  // Unmount Y: after copy
 
-  // Check if game uses disk image or folder-based
+  // Set DOSBox mixer volumes (두기 런처 기본값)
+  autoexec += 'MIXER MASTER 100 SPKR 100 GUS 100 SB 60 FM 60 MT32 100 CDAUDIO 100 > nul\n';
+
+  // Mount Windows 95 as C: drive on IDE primary master
+  autoexec += `imgmount C "${w95krInfo.imagePath}" -t hdd -fs fat -size ${w95krGeometry.sectorSize},${w95krGeometry.sectorsPerTrack},${w95krGeometry.heads},${w95krGeometry.cylinders} -ide 1m > nul\n`;
+
+  // Mount game disk (image or folder) on IDE primary slave
   if (option.diskGeometry && option.executable?.toLowerCase().endsWith('.img')) {
     // Disk image based game
     const gameGeometry = parseDiskGeometry(option.diskGeometry);
     const gameImagePath = join(gameDir, option.executable);
-    autoexec += `IMGMOUNT D "${gameImagePath}" -size ${gameGeometry.sectorSize},${gameGeometry.sectorsPerTrack},${gameGeometry.heads},${gameGeometry.cylinders} -ide 1s\n`;
+    autoexec += `imgmount D "${gameImagePath}" -t hdd -fs fat -size ${gameGeometry.sectorSize},${gameGeometry.sectorsPerTrack},${gameGeometry.heads},${gameGeometry.cylinders} -ide 1s > nul\n`;
   } else {
     // Folder-based game
-    autoexec += `MOUNT D "${gameDir}"\n`;
+    autoexec += `MOUNT D "${gameDir}" > nul\n`;
   }
 
-  // Mount CD-ROM if available (IDE secondary master)
-  if (cdImagePath) {
-    autoexec += `IMGMOUNT E "${cdImagePath}" -t cdrom -ide 2m\n`;
+  // Delete old registry files
+  autoexec += 'del C:\\DX.REG > nul\n';
+  autoexec += 'del C:\\GAME.REG > nul\n';
+
+  // Mount host folder and copy files to C: drive
+  autoexec += `Mount V "${hostDir}" > nul\n`;
+  autoexec += 'xcopy /e /y V:\\*.* C:\\ > nul\n';
+  autoexec += 'C: > nul\n';
+
+  // Copy game.lnk to D: drive if exists
+  if (existsSync(join(hostDir, 'game.lnk'))) {
+    autoexec += 'xcopy /e /y V:\\game.lnk D:\\ > nul\n';
   }
+
+  // Unmount temporary drive
+  autoexec += 'Mount -u V > nul\n';
 
   // Boot from C: drive
-  autoexec += 'BOOT C:\n';
+  autoexec += 'boot -l C > nul\n';
 
   // Get default Win9x settings and merge with custom settings from edit.conf
   let settings = getDefaultWin9xSettings();

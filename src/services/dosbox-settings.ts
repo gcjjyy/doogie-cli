@@ -562,42 +562,69 @@ export function settingsToConfString(settings: DosboxSettings): string {
 
 /**
  * 기본 W98KR/W95KR 설정
+ * Windows 두기 런처와 동일한 설정
  */
 export function getDefaultWin9xSettings(): DosboxSettings {
   return {
     sdl: {
       fullscreen: 'false',
       fulldouble: 'false',
-      output: 'opengl',
+      fullresolution: 'desktop',
       windowresolution: '1024x768',
+      output: 'opengl',
       autolock: 'true',
+      'autolock_feedback': 'none',
+      'mouse_emulation': 'locked',
+      waitonerror: 'false',
+      priority: 'higher',
+      usescancodes: 'false',
     },
     dosbox: {
+      fastbioslogo: 'true',
+      startbanner: 'false',
+      'quit warning': 'false',
       machine: 'svga_s3',
       memsize: '256',
     },
-    dos: {
-      'int13fakeio': 'true',
-      'int13fakev86io': 'true',
+    render: {
+      frameskip: '0',
+      aspect: 'true',
+      scaler: 'hardware2x',
     },
-    bios: {
-      isapnpbios: 'false',
-    },
-    mouse: {
-      mouse_emulation: 'integration',
+    video: {
+      vmemsize: '4',
+      vmemsizekb: '0',
     },
     cpu: {
       core: 'dynamic',
+      fpu: 'true',
       cputype: 'pentium',
       cycles: 'max',
+      cycleup: '150',
+      cycledown: '100',
+      apmbios: 'true',
+      isapnpbios: 'true',
+    },
+    keyboard: {
+      aux: 'false',
+    },
+    voodoo: {
+      voodoo_card: 'auto',
+      voodoo_maxmem: 'true',
+      glide: 'true',
+      lfb: 'full_noaux',
+      splash: 'false',
     },
     mixer: {
       nosound: 'false',
       rate: '44100',
+      blocksize: '1024',
+      prebuffer: '20',
     },
     midi: {
       mpu401: 'intelligent',
       mididevice: 'default',
+      samplerate: '44100',
     },
     sblaster: {
       sbtype: 'sb16',
@@ -605,37 +632,65 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       irq: '7',
       dma: '1',
       hdma: '5',
+      'enable speaker': 'false',
       sbmixer: 'true',
+      oplmode: 'auto',
+      oplemu: 'default',
+      oplrate: '44100',
     },
     gus: {
-      gus: 'false',
+      gus: 'true',
+      gusrate: '44100',
+      gusmemsize: '-1',
+      gusbase: '240',
+      gusirq: '5',
+      gusdma: '3',
+      gustype: 'classic',
     },
     speaker: {
       pcspeaker: 'true',
       pcrate: '44100',
+      tandy: 'off',
     },
-    'ide, primary': {
-      enable: 'true',
-      pnp: 'false',
-      int13fakeio: 'true',
-      int13fakev86io: 'true',
+    joystick: {
+      joysticktype: 'none',
     },
-    'ide, secondary': {
-      enable: 'true',
-      // CD-ROM은 pnp가 필요할 수 있으므로 기본값 사용
-      int13fakeio: 'true',
-      int13fakev86io: 'true',
+    serial: {
+      serial1: 'dummy',
+      serial2: 'dummy',
+      serial3: 'disabled',
+      serial4: 'disabled',
     },
     parallel: {
       parallel1: 'disabled',
       parallel2: 'disabled',
       parallel3: 'disabled',
     },
-    serial: {
-      serial1: 'disabled',
-      serial2: 'disabled',
-      serial3: 'disabled',
-      serial4: 'disabled',
+    dos: {
+      xms: 'true',
+      hma: 'true',
+      ems: 'true',
+      umb: 'true',
+    },
+    'ide, primary': {
+      enable: 'true',
+      pnp: 'true',
+    },
+    'ide, secondary': {
+      enable: 'true',
+      pnp: 'true',
+    },
+    'ide, tertiary': {
+      enable: 'false',
+      pnp: 'true',
+    },
+    'ide, quaternary': {
+      enable: 'false',
+      pnp: 'true',
+    },
+    'fdc, primary': {
+      enable: 'false',
+      pnp: 'true',
     },
   };
 }
