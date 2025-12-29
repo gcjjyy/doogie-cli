@@ -4,9 +4,9 @@ import Table from 'cli-table3';
 import { rm } from 'fs/promises';
 import { getAllGames, searchGames, getGameByCode, deleteGame, deleteDownloadFilesByGameId } from '../services/database.ts';
 import { extractGameArchive, extractConfigAndManual } from '../services/extractor.ts';
-import { launchGame, launchGameWithConfig, findGameExecutable, launchW98krGame, launchW95krGame, isW98krInstalled, isW95krInstalled } from '../services/launcher.ts';
+import { launchGame, launchGameWithConfig, findGameExecutable, launchW98krGame, launchW95krGame } from '../services/launcher.ts';
 import { parseGameConfig, getFirstDosboxOption, requiresW98kr } from '../services/config-parser.ts';
-import { downloadW98kr, downloadW95kr, findWin9xImageByName } from '../services/w98kr.ts';
+import { downloadWin9xImageByName, findWin9xImageByName } from '../services/w98kr.ts';
 import { getExecuterMapping } from '../services/executer-mapping.ts';
 import { updateGame } from '../services/database.ts';
 import { getGameDir } from '../utils/paths.ts';
@@ -372,74 +372,41 @@ async function runGame(game: Game): Promise<void> {
     }
   }
 
-  // Check if this option requires W95KR (Windows 95 games)
-  if (selectedOption.executer === 'w95kr') {
+  // Check if this option requires Win9x image
+  const win9xExecuters = ['w95kr', 'w95jp', 'w95en', 'w98kr', 'w98jp', 'w98en'];
+  if (selectedOption.executer && win9xExecuters.includes(selectedOption.executer)) {
     // Get the correct image name based on executer
     const executerName = selectedOption.executerName || 'W95KR_Daum_Final';
     const mapping = getExecuterMapping(executerName);
-    const w95krName = mapping.imageInfo?.name || 'W95KR_Daum_Final';
+    const imageName = mapping.imageInfo?.name;
 
-    // Check if the image is already installed
-    const installedImage = await findWin9xImageByName(w95krName);
+    if (imageName) {
+      // Check if the image is already installed
+      const installedImage = await findWin9xImageByName(imageName);
 
-    if (!installedImage) {
-      const shouldInstall = await p.confirm({
-        message: `${w95krName} 이미지를 다운로드하시겠습니까?`,
-      });
-
-      if (p.isCancel(shouldInstall) || !shouldInstall) {
-        p.log.info(`${w95krName} 이미지 없이는 이 게임을 실행할 수 없습니다.`);
-        return;
-      }
-
-      const s = p.spinner();
-      s.start(`${w95krName} 이미지 다운로드 중...`);
-
-      try {
-        await downloadW95kr(w95krName, (message: string) => {
-          s.message(message);
+      if (!installedImage) {
+        const shouldInstall = await p.confirm({
+          message: `${imageName} 이미지를 다운로드하시겠습니까?`,
         });
-        s.stop(`${w95krName} 이미지 설치 완료!`);
-      } catch (error) {
-        s.stop(`${w95krName} 설치 실패`);
-        p.log.error(`설치 중 오류 발생: ${error}`);
-        return;
-      }
-    }
-  }
 
-  // Check if this option requires W98KR
-  if (selectedOption.executer === 'w98kr') {
-    // Get the correct image name based on executer
-    const executerName = selectedOption.executerName || 'W98KR_Daum_Final';
-    const mapping = getExecuterMapping(executerName);
-    const w98krName = mapping.imageInfo?.name || 'W98KR_Daum_Final';
+        if (p.isCancel(shouldInstall) || !shouldInstall) {
+          p.log.info(`${imageName} 이미지 없이는 이 게임을 실행할 수 없습니다.`);
+          return;
+        }
 
-    // Check if the image is already installed
-    const installedImage = await findWin9xImageByName(w98krName);
+        const s = p.spinner();
+        s.start(`${imageName} 이미지 다운로드 중...`);
 
-    if (!installedImage) {
-      const shouldInstall = await p.confirm({
-        message: `${w98krName} 이미지를 다운로드하시겠습니까?`,
-      });
-
-      if (p.isCancel(shouldInstall) || !shouldInstall) {
-        p.log.info(`${w98krName} 이미지 없이는 이 게임을 실행할 수 없습니다.`);
-        return;
-      }
-
-      const s = p.spinner();
-      s.start(`${w98krName} 이미지 다운로드 중...`);
-
-      try {
-        await downloadW98kr(w98krName, (message: string) => {
-          s.message(message);
-        });
-        s.stop(`${w98krName} 이미지 설치 완료!`);
-      } catch (error) {
-        s.stop(`${w98krName} 설치 실패`);
-        p.log.error(`설치 중 오류 발생: ${error}`);
-        return;
+        try {
+          await downloadWin9xImageByName(imageName, (message: string) => {
+            s.message(message);
+          });
+          s.stop(`${imageName} 이미지 설치 완료!`);
+        } catch (error) {
+          s.stop(`${imageName} 설치 실패`);
+          p.log.error(`설치 중 오류 발생: ${error}`);
+          return;
+        }
       }
     }
   }
