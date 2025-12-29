@@ -1,0 +1,72 @@
+# 두기의 고전게임 런처 CLI
+
+[두기의 고전게임](https://nemo838.tistory.com/) 사이트의 DOS/Windows 게임을 macOS/Linux에서 즐길 수 있는 CLI 도구입니다.
+
+> **비공식 프로그램**: 이 프로젝트는 공식 두기 런처와 무관한 비공식 도구입니다. 모든 게임이 공식 런처와 동일하게 구동되지 않을 수 있습니다.
+
+> **Windows 사용자**: [공식 두기 런처](https://nemo838.tistory.com/)를 사용해주세요.
+
+<img width="1324" height="611" alt="Screenshot" src="https://github.com/user-attachments/assets/48dbb8da-e01f-4889-a9ad-7ca0e9723bba" />
+
+## 설치
+
+### macOS (Homebrew)
+
+```bash
+brew tap gcjjyy/doogie
+brew install doogie-cli
+```
+
+### Linux
+
+[Releases](https://github.com/gcjjyy/doogie-cli/releases)에서 다운로드
+
+```bash
+tar -xzf doogie-cli-linux-x64.tar.gz
+./doogie-cli-linux-x64
+```
+
+### 소스에서 빌드
+
+```bash
+curl -fsSL https://bun.sh/install | bash  # Bun 설치
+bun install && bun run build
+```
+
+## 사용법
+
+```bash
+doogie
+```
+
+- **게임 목록**: 설치된 게임 실행/관리
+- **게임 추가**: 티스토리 URL로 게임 다운로드
+- **홈페이지**: 두기의 고전게임 사이트 열기
+
+## 지원 현황
+
+| 게임 유형 | 지원 | 비고 |
+|----------|------|------|
+| DOS 게임 | ✅ | DOSBox-X |
+| Windows 95 게임 | ✅ | W95KR-x 이미지 |
+| Windows 98 게임 | ✅ | W98KR-x 이미지 |
+| PCem 게임 | ❌ | 미지원 |
+
+## 데이터 저장 위치
+
+```
+~/.doogie-cli/
+├── games/      # 다운로드된 게임
+├── util/       # DOS 유틸리티 (태백한글, SB16 등)
+├── w95kr-x/    # Windows 95 이미지
+├── w98kr-x/    # Windows 98 이미지
+└── doogie.db   # 데이터베이스
+```
+
+## 라이선스
+
+MIT License
+
+---
+
+게임 리소스: [두기의 고전게임](https://nemo838.tistory.com/)
