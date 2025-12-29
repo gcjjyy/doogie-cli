@@ -9,78 +9,35 @@
  * - ver.20.xx (구버전): 다른 인덱싱 체계
  */
 
-// 신버전 (ver.23.xx) 섹션 인덱스 → 섹션 이름 매핑
-export const SECTION_INDEX: Record<number, string> = {
+// 신버전 매핑은 option-dat.ts에서 import (Option.dat 기반 완전한 매핑)
+import {
+  SECTION_NAMES,
+  SECTION_ITEMS as OPTION_DAT_SECTION_ITEMS,
+} from '../data/mapper/option-dat.ts';
+
+// 하위 호환성을 위해 re-export
+export const SECTION_INDEX = SECTION_NAMES;
+export const SECTION_ITEMS = OPTION_DAT_SECTION_ITEMS;
+
+// 구버전 (ver.20.xx) 섹션 인덱스 매핑
+// 구버전에서는 섹션 순서가 다름: 1=sdl, 3=dosbox, 6=cpu 등
+export const SECTION_INDEX_LEGACY: Record<number, string> = {
   0: 'default',
-  1: 'win9x',      // win9x options (특수 처리)
-  2: 'pcem',       // pcem options (특수 처리)
-  3: 'separator',
-  4: 'log',
-  5: 'sdl',
-  6: 'dos',
-  7: 'dosbox',
-  8: 'cpu',
-  9: 'render',
-  10: 'mixer',
-  11: 'sblaster',
-  12: 'midi',
-  13: 'gus',
-  14: 'speaker',
-  15: 'innova',
-  16: 'joystick',
-  17: 'serial',
-  18: 'printer',
-  19: 'parallel',
-  20: 'glide',
+  1: 'sdl',        // 구버전에서 섹션 1은 sdl (autolock, sensitivity, mapperfile 등)
+  2: 'pcem',
+  3: 'dosbox',     // 신버전에서는 7
+  6: 'cpu',        // 신버전에서는 8
+  19: 'glide',     // 신버전에서는 20
   21: 'voodoo',
-  22: 'pci',
-  23: 'vsync',
-  24: 'keyboard',
-  25: 'ne2000',
-  26: 'fdc, primary',
-  27: 'ide, primary',
-  28: 'ide, secondary',
-  29: 'ide, tertiary',
-  30: 'ide, quaternary',
-  31: 'mapper',
   32: 'ethernet, pcap',
-  33: 'ethernet, slirp',
-  34: 'fluidsynth',
-  35: 'video',
-  36: 'pc98',
-  37: 'ttf',
-  38: 'config',
-  39: 'dosv',
 };
 
-// 섹션별 항목 인덱스 → 키 이름 매핑
-export const SECTION_ITEMS: Record<number, Record<number, string>> = {
-  // Section 0: default
+// 구버전 섹션별 항목 인덱스 매핑
+export const SECTION_ITEMS_LEGACY: Record<number, Record<number, string>> = {
   0: {
-    0: 'version',      // 실행기 종류 (W98KR_Daum_Final, DOSBox-x, etc.)
-    1: 'DirectX',
-    2: 'Menu',
-    3: 'SavePath',
-    4: 'SetAspect',
+    0: 'executer',  // 실행기 (W95KR_Daum 등)
   },
-
-  // Section 1: win9x options (특수 처리 - DX.REG 등에 사용)
-  1: {
-    0: '9xdrv',
-    1: '9xres',
-    2: '9xddraw',
-    3: '9xd3d',
-    4: '9x3dfx',
-    5: '9xmpu',
-    6: '9xmaster',
-    7: '9xwave',
-    8: '9xmidi',
-    9: '9xcd',
-    10: '9xboot',
-  },
-
-  // Section 5: sdl
-  5: {
+  1: {  // sdl section (구버전에서 섹션 1은 sdl)
     0: 'fullscreen',
     1: 'fulldouble',
     2: 'fullresolution',
@@ -92,188 +49,6 @@ export const SECTION_ITEMS: Record<number, Record<number, string>> = {
     8: 'priority',
     9: 'mapperfile',
     10: 'usescancodes',
-    11: 'overscan',
-    12: 'pixelshader',
-    13: 'autolock_feedback',
-    14: 'mouse_emulation',
-  },
-
-  // Section 6: dos
-  6: {
-    0: 'xms',
-    1: 'ems',
-    2: 'umb',
-    3: 'keyboardlayout',
-    4: 'enable a20 on windows init',
-    17: 'int 13 extensions',
-  },
-
-  // Section 7: dosbox
-  7: {
-    0: 'language',
-    1: 'machine',
-    2: 'captures',
-    3: 'memsize',
-    4: 'vmemsize',
-    5: 'vmemsizekb',
-    58: 'enable pci bus',
-  },
-
-  // Section 8: cpu
-  8: {
-    0: 'core',
-    1: 'cputype',
-    2: 'cycles',
-    3: 'cycleup',
-    4: 'cycledown',
-    5: 'isapnpbios',
-    11: 'apmbios',
-  },
-
-  // Section 9: render
-  9: {
-    0: 'frameskip',
-    1: 'aspect',
-    2: 'scaler',
-  },
-
-  // Section 10: mixer
-  10: {
-    0: 'nosound',
-    1: 'rate',
-    2: 'blocksize',
-    3: 'prebuffer',
-  },
-
-  // Section 11: sblaster
-  11: {
-    0: 'sbtype',
-    1: 'sbbase',
-    2: 'irq',
-    3: 'dma',
-    4: 'hdma',
-    5: 'sbmixer',
-    6: 'oplmode',
-    7: 'oplemu',
-    8: 'oplrate',
-  },
-
-  // Section 12: midi
-  12: {
-    0: 'mpu401',
-    1: 'mididevice',
-    2: 'midiconfig',
-  },
-
-  // Section 13: gus
-  13: {
-    0: 'gus',
-    1: 'gusrate',
-    2: 'gusbase',
-    3: 'gusirq',
-    4: 'gusdma',
-  },
-
-  // Section 14: speaker
-  14: {
-    0: 'pcspeaker',
-    1: 'pcrate',
-    2: 'tandy',
-    3: 'tandyrate',
-    4: 'disney',
-  },
-
-  // Section 16: joystick
-  16: {
-    0: 'joysticktype',
-    1: 'timed',
-    2: 'autofire',
-    3: 'swap34',
-    4: 'buttonwrap',
-  },
-
-  // Section 20: glide
-  20: {
-    0: 'glide',
-    1: 'lfb',
-    2: 'splash',
-  },
-
-  // Section 21: voodoo
-  21: {
-    0: 'voodoo',
-    1: 'voodoomem',
-  },
-
-  // Section 22: pci
-  22: {
-    0: 'voodoo',
-    1: 'voodoomem',
-  },
-
-  // Section 27: ide, primary
-  27: {
-    0: 'enable',
-    1: 'pnp',
-    2: 'irq',
-    3: 'io',
-    4: 'altio',
-    5: 'int13fakeio',
-    6: 'int13fakev86io',
-    7: 'enable pio32',
-    8: 'ignore pio32',
-    9: 'cd-rom spinup time',
-    10: 'cd-rom spindown timeout',
-    11: 'cd-rom insertion delay',
-  },
-
-  // Section 28: ide, secondary
-  28: {
-    0: 'enable',
-    1: 'pnp',
-    2: 'irq',
-    3: 'io',
-    4: 'altio',
-    5: 'int13fakeio',
-    6: 'int13fakev86io',
-    7: 'enable pio32',
-    8: 'ignore pio32',
-    9: 'cd-rom spinup time',
-    10: 'cd-rom spindown timeout',
-    11: 'cd-rom insertion delay',
-  },
-};
-
-// 구버전 (ver.20.xx) 섹션 인덱스 매핑
-// 구버전에서는 섹션 순서가 다름: 3=dosbox, 6=cpu 등
-export const SECTION_INDEX_LEGACY: Record<number, string> = {
-  0: 'default',
-  1: 'win9x',
-  2: 'pcem',
-  3: 'dosbox',     // 신버전에서는 7
-  6: 'cpu',        // 신버전에서는 8
-  19: 'glide',     // 신버전에서는 20
-  21: 'voodoo',    // 신버전에서는... 다름
-  32: 'ethernet, pcap',
-};
-
-// 구버전 섹션별 항목 인덱스 매핑
-export const SECTION_ITEMS_LEGACY: Record<number, Record<number, string>> = {
-  0: {
-    0: 'version',
-  },
-  1: {
-    0: '9xdrv',
-    1: '9xres',
-    2: '9xddraw',
-    3: '9xd3d',
-    4: '9x3dfx',
-    5: '9xmpu',
-    6: '9xmaster',
-    7: '9xwave',
-    8: '9xmidi',
-    9: '9xcd',
-    10: '9xboot',
   },
   3: {  // dosbox section
     1: 'machine',
@@ -287,11 +62,11 @@ export const SECTION_ITEMS_LEGACY: Record<number, Record<number, string>> = {
     5: 'isapnpbios',
     11: 'apmbios',
   },
-  19: {  // glide/mouse section
-    0: 'mouse_emulation',  // emu, integration
+  19: {  // glide section
+    0: 'glide',  // emu, true, false
   },
-  21: {  // resolution section
-    1: '9xres',
+  21: {  // voodoo section
+    1: 'glide',
   },
   32: {  // ethernet section
     11: 'cd-rom insertion delay',
@@ -587,15 +362,14 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       'quit warning': 'false',
       machine: 'svga_s3',
       memsize: '256',
+      vmemsize: '4',
+      memsizekb: '0',
+      memalias: '0',
     },
     render: {
       frameskip: '0',
       aspect: 'true',
       scaler: 'hardware2x',
-    },
-    video: {
-      vmemsize: '4',
-      vmemsizekb: '0',
     },
     cpu: {
       core: 'dynamic',
@@ -605,16 +379,21 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       cycleup: '150',
       cycledown: '100',
       apmbios: 'true',
-      isapnpbios: 'true',
+      isapnpbios: 'false',
     },
     keyboard: {
       aux: 'false',
+      auxdevice: 'intellimouse',
     },
+    pci: {},
     voodoo: {
-      voodoo_card: 'auto',
-      voodoo_maxmem: 'true',
-      glide: 'true',
-      lfb: 'full_noaux',
+      voodoo: 'false',
+      voodoo_card: 'false',
+    },
+    glide: {
+      glide: 'emu',
+      grport: '600',
+      lfb: 'full',
       splash: 'false',
     },
     mixer: {
@@ -674,25 +453,25 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       ems: 'true',
       umb: 'true',
     },
+    'fdc, primary': {
+      enable: 'true',
+      pnp: 'false',
+    },
     'ide, primary': {
       enable: 'true',
-      pnp: 'true',
+      pnp: 'false',
     },
     'ide, secondary': {
       enable: 'true',
-      pnp: 'true',
+      pnp: 'false',
     },
     'ide, tertiary': {
       enable: 'false',
-      pnp: 'true',
+      pnp: 'false',
     },
     'ide, quaternary': {
       enable: 'false',
-      pnp: 'true',
-    },
-    'fdc, primary': {
-      enable: 'false',
-      pnp: 'true',
+      pnp: 'false',
     },
   };
 }
@@ -781,4 +560,111 @@ export function generateDosboxConf(
   lines.push(autoexec);
 
   return lines.join('\n').trim();
+}
+
+// Import preset loader (lazy import to avoid circular dependencies)
+let presetModule: typeof import('../data/preset/index.ts') | null = null;
+
+async function getPresetModule() {
+  if (!presetModule) {
+    presetModule = await import('../data/preset/index.ts');
+  }
+  return presetModule;
+}
+
+/**
+ * Load CFGFILE preset and convert to DosboxSettings
+ * CFGFILE is specified in autoexec.conf, e.g., "CFGFILE:[KR98]D3D X.conf"
+ *
+ * @param cfgFile CFGFILE string from autoexec.conf
+ * @returns DosboxSettings from the preset, or null if not found
+ */
+export async function loadCfgFilePreset(cfgFile: string): Promise<{
+  settings: DosboxSettings;
+  executerName: string | null;
+  mapperFile: string | null;
+} | null> {
+  const { getPresetFile } = await getPresetModule();
+
+  const presetContent = getPresetFile(cfgFile);
+  if (!presetContent) {
+    console.log(`CFGFILE preset not found: ${cfgFile}`);
+    return null;
+  }
+
+  // Parse the preset file (same format as edit.conf)
+  const version = parseEditConfVersion(presetContent);
+  const isLegacy = isLegacyVersion(version);
+  const entries = parseEditConf(presetContent);
+  const settings = convertEditConfToSettings(entries, isLegacy);
+  const executerName = getExecuterType(entries);
+
+  // Extract mapper file if specified (5|9|mapperfile.txt)
+  let mapperFile: string | null = null;
+  for (const entry of entries) {
+    if (entry.section === 5 && entry.item === 9 && entry.value) {
+      mapperFile = entry.value;
+      break;
+    }
+  }
+
+  console.log(`Loaded CFGFILE preset: ${cfgFile} -> executer: ${executerName}, mapper: ${mapperFile}`);
+
+  return { settings, executerName, mapperFile };
+}
+
+/**
+ * Get DOSBox-X settings with CFGFILE preset applied
+ *
+ * @param cfgFile Optional CFGFILE string
+ * @param editConfContent Optional edit.conf content for additional overrides
+ * @returns Merged DosboxSettings
+ */
+export async function getWin9xSettingsWithPreset(
+  cfgFile?: string,
+  editConfContent?: string
+): Promise<{
+  settings: DosboxSettings;
+  executerName: string | null;
+  mapperFile: string | null;
+}> {
+  // Start with base Win9x settings
+  let settings = getDefaultWin9xSettings();
+  let executerName: string | null = null;
+  let mapperFile: string | null = null;
+
+  // Apply CFGFILE preset if specified
+  if (cfgFile) {
+    const presetResult = await loadCfgFilePreset(cfgFile);
+    if (presetResult) {
+      settings = mergeSettings(settings, presetResult.settings);
+      executerName = presetResult.executerName;
+      mapperFile = presetResult.mapperFile;
+    }
+  }
+
+  // Apply edit.conf overrides if present
+  if (editConfContent) {
+    const version = parseEditConfVersion(editConfContent);
+    const isLegacy = isLegacyVersion(version);
+    const entries = parseEditConf(editConfContent);
+    const editSettings = convertEditConfToSettings(entries, isLegacy);
+    settings = mergeSettings(settings, editSettings);
+
+    // Get executer from edit.conf if not set by preset
+    const editExecuter = getExecuterType(entries);
+    if (editExecuter) {
+      executerName = editExecuter;
+    }
+
+    // Get mapper file from edit.conf if not set by preset
+    for (const entry of entries) {
+      if (entry.section === 5 && entry.item === 9 && entry.value) {
+        mapperFile = entry.value;
+        break;
+      }
+    }
+  }
+
+  return { settings, executerName, mapperFile };
 }

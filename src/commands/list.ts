@@ -6,7 +6,8 @@ import { getAllGames, searchGames, getGameByCode, deleteGame, deleteDownloadFile
 import { extractGameArchive, extractConfigAndManual } from '../services/extractor.ts';
 import { launchGame, launchGameWithConfig, findGameExecutable, launchW98krGame, launchW95krGame, isW98krInstalled, isW95krInstalled } from '../services/launcher.ts';
 import { parseGameConfig, getFirstDosboxOption, requiresW98kr } from '../services/config-parser.ts';
-import { downloadW98kr, downloadW95kr } from '../services/w98kr.ts';
+import { downloadW98kr, downloadW95kr, findWin9xImageByName } from '../services/w98kr.ts';
+import { getExecuterMapping } from '../services/executer-mapping.ts';
 import { updateGame } from '../services/database.ts';
 import { getGameDir } from '../utils/paths.ts';
 import { checkAndInstall7zip, isDosUtilInstalled, downloadDosUtil } from '../utils/deps.ts';
@@ -373,19 +374,21 @@ async function runGame(game: Game): Promise<void> {
 
   // Check if this option requires W95KR (Windows 95 games)
   if (selectedOption.executer === 'w95kr') {
-    const w95krName = 'W95KR-x';
-    const downloadSize = '약 50MB';
+    // Get the correct image name based on executer
+    const executerName = selectedOption.executerName || 'W95KR_Daum_Final';
+    const mapping = getExecuterMapping(executerName);
+    const w95krName = mapping.imageInfo?.name || 'W95KR_Daum_Final';
 
-    if (!isW95krInstalled(w95krName)) {
-      p.log.warn('이 게임은 Windows 95 이미지가 필요합니다.');
-      p.log.info(`${w95krName}로 실행합니다.`);
+    // Check if the image is already installed
+    const installedImage = await findWin9xImageByName(w95krName);
 
+    if (!installedImage) {
       const shouldInstall = await p.confirm({
-        message: `${w95krName} 이미지를 다운로드하시겠습니까? (${downloadSize})`,
+        message: `${w95krName} 이미지를 다운로드하시겠습니까?`,
       });
 
       if (p.isCancel(shouldInstall) || !shouldInstall) {
-        p.log.info('W95KR-x 이미지 없이는 이 게임을 실행할 수 없습니다.');
+        p.log.info(`${w95krName} 이미지 없이는 이 게임을 실행할 수 없습니다.`);
         return;
       }
 
@@ -393,7 +396,7 @@ async function runGame(game: Game): Promise<void> {
       s.start(`${w95krName} 이미지 다운로드 중...`);
 
       try {
-        await downloadW95kr((message) => {
+        await downloadW95kr(w95krName, (message: string) => {
           s.message(message);
         });
         s.stop(`${w95krName} 이미지 설치 완료!`);
@@ -407,21 +410,21 @@ async function runGame(game: Game): Promise<void> {
 
   // Check if this option requires W98KR
   if (selectedOption.executer === 'w98kr') {
-    // Always use W98KR-x image (DOSBox-X용)
-    const w98krName = 'W98KR-x';
-    const downloadSize = '약 94MB';
-    const originalImage = selectedOption.executerName || 'W98KR';
+    // Get the correct image name based on executer
+    const executerName = selectedOption.executerName || 'W98KR_Daum_Final';
+    const mapping = getExecuterMapping(executerName);
+    const w98krName = mapping.imageInfo?.name || 'W98KR_Daum_Final';
 
-    if (!isW98krInstalled(w98krName)) {
-      p.log.warn(`이 게임은 ${originalImage} 이미지가 필요합니다.`);
-      p.log.info(`${w98krName}로 대체하여 실행합니다.`);
+    // Check if the image is already installed
+    const installedImage = await findWin9xImageByName(w98krName);
 
+    if (!installedImage) {
       const shouldInstall = await p.confirm({
-        message: `${w98krName} 이미지를 다운로드하시겠습니까? (${downloadSize})`,
+        message: `${w98krName} 이미지를 다운로드하시겠습니까?`,
       });
 
       if (p.isCancel(shouldInstall) || !shouldInstall) {
-        p.log.info('W98KR-x 이미지 없이는 이 게임을 실행할 수 없습니다.');
+        p.log.info(`${w98krName} 이미지 없이는 이 게임을 실행할 수 없습니다.`);
         return;
       }
 
@@ -429,9 +432,9 @@ async function runGame(game: Game): Promise<void> {
       s.start(`${w98krName} 이미지 다운로드 중...`);
 
       try {
-        await downloadW98kr((message) => {
+        await downloadW98kr(w98krName, (message: string) => {
           s.message(message);
-        }, 'dosbox-x');
+        });
         s.stop(`${w98krName} 이미지 설치 완료!`);
       } catch (error) {
         s.stop(`${w98krName} 설치 실패`);
@@ -444,10 +447,15 @@ async function runGame(game: Game): Promise<void> {
   // Show executer info
   let executerInfo: string;
   if (selectedOption.executer === 'w95kr') {
-    executerInfo = `${pc.cyan('Windows 95')} (W95KR-x)`;
+    const executerName = selectedOption.executerName || 'W95KR_Daum_Final';
+    const mapping = getExecuterMapping(executerName);
+    const imageName = mapping.imageInfo?.name || 'W95KR_Daum_Final';
+    executerInfo = `${pc.cyan('Windows 95')} (${imageName})`;
   } else if (selectedOption.executer === 'w98kr') {
-    const originalImage = selectedOption.executerName || 'W98KR';
-    executerInfo = `${pc.cyan('Windows 98')} (${originalImage} → W98KR-x)`;
+    const executerName = selectedOption.executerName || 'W98KR_Daum_Final';
+    const mapping = getExecuterMapping(executerName);
+    const imageName = mapping.imageInfo?.name || 'W98KR_Daum_Final';
+    executerInfo = `${pc.cyan('Windows 98')} (${imageName})`;
   } else {
     executerInfo = pc.blue('DOSBox');
   }

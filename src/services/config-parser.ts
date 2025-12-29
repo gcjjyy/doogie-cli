@@ -561,6 +561,7 @@ export async function parseGameConfig(gameDir: string): Promise<GameConfig | nul
               const hasImgCommand = opt.commands.some(cmd => cmd.toLowerCase().endsWith('.img'));
               if (hasImgCommand && opt.diskGeometry) {
                 opt.executer = correctExecuter;
+                opt.executerName = editConfig.executerName;  // Set the original executer name
               }
               if (opt.children) {
                 updateExecuter(opt.children);

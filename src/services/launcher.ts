@@ -3,7 +3,14 @@ import { readdir, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { findDosboxXPath, getBundledDosboxXLibDir } from '../utils/platform.ts';
 import { getW98krXDir, getW95krXDir, getDosUtilDir, getGusDir, getLogsDir } from '../utils/paths.ts';
-import { findW98krByName, findW95krByName, parseDiskGeometry, isW98krInstalled, isW95krInstalled } from './w98kr.ts';
+import {
+  findW98krByName,
+  findW95krByName,
+  parseDiskGeometry,
+  isW98krInstalled,
+  isW95krInstalled,
+  findWin9xImageByName,
+} from './w98kr.ts';
 import {
   getDefaultWin9xSettings,
   getDefaultDosboxSettings,
@@ -13,9 +20,12 @@ import {
   parseEditConfVersion,
   isLegacyVersion,
   convertEditConfToSettings,
+  getWin9xSettingsWithPreset,
   type DosboxSettings,
 } from './dosbox-settings.ts';
+import { getExecuterMapping, type Win9xImageInfo } from './executer-mapping.ts';
 import type { GameConfig, ExecutionOption } from './config-parser.ts';
+import { getMapperFile } from '../data/mapper/index.ts';
 
 import type { LauncherConfig, W98krInfo } from '../types/index.ts';
 
@@ -397,7 +407,8 @@ export async function generateW98krConfig(
   option: ExecutionOption,
   w98krInfo: W98krInfo,
   resolution: { width: number; height: number; bitsPerPixel: number },
-  customSettings?: DosboxSettings
+  customSettings?: DosboxSettings,
+  editConfContent?: string
 ): Promise<string> {
   const configPath = join(gameDir, 'dosbox-w98kr.conf');
 
@@ -407,17 +418,13 @@ export async function generateW98krConfig(
   // Check for CD image
   const cdImagePath = await findCdImage(gameDir);
 
-  // Determine host directory for Game.txt and DX.REG
+  // Determine host directory for Game.txt
   const hostDir = option.optionPath
     ? join(gameDir, 'DG_9xOpt', option.optionPath)
     : join(gameDir, 'DG_9xOpt', '000');
 
-  // Ensure host directory exists and write DX.REG
-  await mkdir(hostDir, { recursive: true });
-  await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
-
   // Build autoexec section for booting Windows 98
-  // 두기 런처 방식과 동일하게 구현
+  // 공식 두기 런처 방식과 동일하게 구현
   let autoexec = '@echo off\n';
 
   // Mount CD-ROM on IDE secondary master (to avoid PnP detection issues on newer DOSBox-X)
@@ -444,11 +451,102 @@ export async function generateW98krConfig(
     autoexec += `MOUNT D "${gameDir}" > nul\n`;
   }
 
-  // Delete old registry files
+  // Delete old registry files (공식 런처 방식)
   autoexec += 'del C:\\DX.REG > nul\n';
   autoexec += 'del C:\\GAME.REG > nul\n';
 
-  // Mount host folder and copy files to C: drive
+  // Build DX.REG using C:\DGGL\ registry files (공식 런처 방식)
+  // Resolution format: {width}x{bitsPerPixel} (e.g., 640x8, 800x16)
+  const resolutionFile = `${resolution.width}x${resolution.bitsPerPixel}`;
+
+  autoexec += 'copy C:\\DGGL\\BLANK.REG C:\\DX.REG > nul\n';
+  autoexec += `if not exist C:\\DGGL\\Res\\${resolutionFile}.reg goto 9xres\n`;
+  autoexec += `type C:\\DGGL\\Res\\${resolutionFile}.reg >> C:\\DX.REG\n`;
+  autoexec += ':9xres\n';
+  autoexec += 'if not exist C:\\DGGL\\DDRAW\\true.reg goto 9xddraw\n';
+  autoexec += 'type C:\\DGGL\\DDRAW\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9xddraw\n';
+  autoexec += 'if not exist C:\\DGGL\\D3D\\true.reg goto 9xd3d\n';
+  autoexec += 'type C:\\DGGL\\D3D\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9xd3d\n';
+  autoexec += 'if not exist C:\\DGGL\\3DFX\\true.reg goto 9x3dfx\n';
+  autoexec += 'type C:\\DGGL\\3DFX\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9x3dfx\n';
+  autoexec += 'if not exist C:\\DGGL\\MPU\\SBFM.reg goto 9xmpu\n';
+  autoexec += 'type C:\\DGGL\\MPU\\SBFM.reg >> C:\\DX.REG\n';
+  autoexec += ':9xmpu\n';
+
+  // Volume settings (공식 런처 방식)
+  // Master Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master.reg goto master1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':master1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master1.reg goto master2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':master2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master3.reg goto master3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':master3\n';
+  // Wave Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave.reg goto wave1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':wave1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave1.reg goto wave2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':wave2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave3.reg goto wave3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':wave3\n';
+  // Midi Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi.reg goto midi1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':midi1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi1.reg goto midi2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':midi2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi3.reg goto midi3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':midi3\n';
+  // CD Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD.reg goto cd1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += ':cd1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD1.reg goto cd2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 8080 >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 8080 >> C:\\DX.REG\n';
+  autoexec += ':cd2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD3.reg goto cd3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += ':cd3\n';
+
+  // Mount host folder and copy game files to C: drive
   autoexec += `Mount V "${hostDir}" > nul\n`;
   autoexec += 'xcopy /e /y V:\\*.* C:\\ > nul\n';
   autoexec += 'C: > nul\n';
@@ -464,10 +562,42 @@ export async function generateW98krConfig(
   // Boot from C: drive
   autoexec += 'boot -l C > nul\n';
 
-  // Get default Win9x settings and merge with custom settings from edit.conf
-  let settings = getDefaultWin9xSettings();
+  // Get Win9x settings with CFGFILE preset and edit.conf overrides
+  const cfgFile = option.cfgFile;
+  const presetResult = await getWin9xSettingsWithPreset(cfgFile, editConfContent);
+  let settings = presetResult.settings;
+
+  // Apply any additional custom settings
   if (customSettings) {
     settings = mergeSettings(settings, customSettings);
+  }
+
+  // Determine mapper file (from preset, edit.conf, or default)
+  const mapperFileName = presetResult.mapperFile ||
+    (settings.sdl?.mapperfile && typeof settings.sdl.mapperfile === 'string' ? settings.sdl.mapperfile : null);
+
+  // Handle mapper file
+  if (mapperFileName) {
+    const mapperContent = getMapperFile(mapperFileName);
+    if (mapperContent) {
+      // Write mapper file to game folder
+      const mapperPath = join(gameDir, mapperFileName.endsWith('.txt') ? mapperFileName : `${mapperFileName}.txt`);
+      await writeFile(mapperPath, mapperContent);
+      // Update settings to point to local mapper file
+      settings.sdl = settings.sdl || {};
+      settings.sdl.mapperfile = mapperPath;
+      console.log(`Mapper file written: ${mapperPath}`);
+    } else {
+      console.log(`Warning: Mapper file not found in bundle: ${mapperFileName}`);
+      // Remove mapperfile setting if file not found
+      if (settings.sdl) {
+        delete settings.sdl.mapperfile;
+      }
+    }
+  }
+
+  if (cfgFile) {
+    console.log(`Applied CFGFILE preset: ${cfgFile}`);
   }
 
   // Generate conf file
@@ -493,17 +623,25 @@ export async function launchW98krGame(
     throw new Error('DOSBox-X 실행파일을 찾을 수 없습니다.');
   }
 
-  // For DOSBox-X, always use W98KR-x image
-  const w98krName = 'W98KR-x';
+  // Get the correct image based on executer name from gameConfig
+  const executerName = gameConfig.executerName || 'W98KR_Daum_Final';
+  const mapping = getExecuterMapping(executerName);
 
-  // Check if W98KR is installed
-  const w98krInfo = await findW98krByName(w98krName);
-
-  if (!w98krInfo) {
-    throw new Error(`W98KR 이미지가 설치되어 있지 않습니다: ${w98krName}\n\nW98KR 이미지를 먼저 설치해주세요.`);
+  if (!mapping.imageInfo) {
+    throw new Error(`실행기 ${executerName}에 대한 이미지 정보를 찾을 수 없습니다.`);
   }
 
-  console.log(`Using W98KR: ${w98krInfo.name} (${w98krInfo.version})`);
+  const imageName = mapping.imageInfo.name;
+  console.log(`Executer: ${executerName} -> Image: ${imageName}`);
+
+  // Check if the image is installed
+  const w98krInfo = await findWin9xImageByName(imageName);
+
+  if (!w98krInfo) {
+    throw new Error(`Win9x 이미지가 설치되어 있지 않습니다: ${imageName}\n\n다음 명령어로 이미지를 설치해주세요:\n  doogie-cli install-image ${imageName}`);
+  }
+
+  console.log(`Using Win98 image: ${w98krInfo.name} (${w98krInfo.version})`);
   if (selectedOption.optionPath) {
     console.log(`Auto-run option: ${selectedOption.optionPath}`);
   }
@@ -512,14 +650,21 @@ export async function launchW98krGame(
   const resolution = gameConfig.resolution || { width: 640, height: 480, bitsPerPixel: 8 };
   console.log(`Setting display: ${resolution.width}x${resolution.height} ${resolution.bitsPerPixel === 8 ? '256 colors' : `${resolution.bitsPerPixel}-bit`}`);
 
-  // Generate DOSBox-X config for W98KR (writes DX.REG to host and copies via autoexec)
-  // Pass dosboxSettings from edit.conf as custom settings
+  // Read edit.conf content for settings overrides
+  let editConfContent: string | undefined;
+  const editConfPath = join(gameDir, '..', 'Config', 'DosBox', 'edit.conf');
+  if (existsSync(editConfPath)) {
+    editConfContent = await Bun.file(editConfPath).text();
+  }
+
+  // Generate DOSBox-X config for W98KR with CFGFILE preset and edit.conf overrides
   const configPath = await generateW98krConfig(
     gameDir,
     selectedOption,
     w98krInfo,
     resolution,
-    gameConfig.dosboxSettings
+    gameConfig.dosboxSettings,
+    editConfContent
   );
 
   // Launch DOSBox-X
@@ -607,7 +752,8 @@ export async function generateW95krConfig(
   option: ExecutionOption,
   w95krInfo: W98krInfo,
   resolution: { width: number; height: number; bitsPerPixel: number },
-  customSettings?: DosboxSettings
+  customSettings?: DosboxSettings,
+  editConfContent?: string
 ): Promise<string> {
   const configPath = join(gameDir, 'dosbox-w95kr.conf');
 
@@ -617,17 +763,13 @@ export async function generateW95krConfig(
   // Check for CD image
   const cdImagePath = await findCdImage(gameDir);
 
-  // Determine host directory for Game.txt and DX.REG
+  // Determine host directory for Game.txt
   const hostDir = option.optionPath
     ? join(gameDir, 'DG_9xOpt', option.optionPath)
     : join(gameDir, 'DG_9xOpt', '000');
 
-  // Ensure host directory exists and write DX.REG
-  await mkdir(hostDir, { recursive: true });
-  await writeDxRegToHostDir(hostDir, resolution.width, resolution.height, resolution.bitsPerPixel);
-
   // Build autoexec section for booting Windows 95
-  // 두기 런처 방식과 동일하게 구현
+  // 공식 두기 런처 방식과 동일하게 구현
   let autoexec = '@echo off\n';
 
   // Mount CD-ROM on IDE secondary master (to avoid PnP detection issues on newer DOSBox-X)
@@ -654,11 +796,102 @@ export async function generateW95krConfig(
     autoexec += `MOUNT D "${gameDir}" > nul\n`;
   }
 
-  // Delete old registry files
+  // Delete old registry files (공식 런처 방식)
   autoexec += 'del C:\\DX.REG > nul\n';
   autoexec += 'del C:\\GAME.REG > nul\n';
 
-  // Mount host folder and copy files to C: drive
+  // Build DX.REG using C:\DGGL\ registry files (공식 런처 방식)
+  // Resolution format: {width}x{bitsPerPixel} (e.g., 640x8, 800x16)
+  const resolutionFile = `${resolution.width}x${resolution.bitsPerPixel}`;
+
+  autoexec += 'copy C:\\DGGL\\BLANK.REG C:\\DX.REG > nul\n';
+  autoexec += `if not exist C:\\DGGL\\Res\\${resolutionFile}.reg goto 9xres\n`;
+  autoexec += `type C:\\DGGL\\Res\\${resolutionFile}.reg >> C:\\DX.REG\n`;
+  autoexec += ':9xres\n';
+  autoexec += 'if not exist C:\\DGGL\\DDRAW\\true.reg goto 9xddraw\n';
+  autoexec += 'type C:\\DGGL\\DDRAW\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9xddraw\n';
+  autoexec += 'if not exist C:\\DGGL\\D3D\\true.reg goto 9xd3d\n';
+  autoexec += 'type C:\\DGGL\\D3D\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9xd3d\n';
+  autoexec += 'if not exist C:\\DGGL\\3DFX\\true.reg goto 9x3dfx\n';
+  autoexec += 'type C:\\DGGL\\3DFX\\true.reg >> C:\\DX.REG\n';
+  autoexec += ':9x3dfx\n';
+  autoexec += 'if not exist C:\\DGGL\\MPU\\SBFM.reg goto 9xmpu\n';
+  autoexec += 'type C:\\DGGL\\MPU\\SBFM.reg >> C:\\DX.REG\n';
+  autoexec += ':9xmpu\n';
+
+  // Volume settings (공식 런처 방식)
+  // Master Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master.reg goto master1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':master1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master1.reg goto master2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':master2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Master3.reg goto master3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Master4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':master3\n';
+  // Wave Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave.reg goto wave1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':wave1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave1.reg goto wave2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':wave2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Wave3.reg goto wave3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Wave4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':wave3\n';
+  // Midi Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi.reg goto midi1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':midi1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi1.reg goto midi2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ffff >> C:\\DX.REG\n';
+  autoexec += ':midi2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\Midi3.reg goto midi3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\Midi4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo ff,ff,ff,ff >> C:\\DX.REG\n';
+  autoexec += ':midi3\n';
+  // CD Volume
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD.reg goto cd1\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += ':cd1\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD1.reg goto cd2\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD1.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 8080 >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD2.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 8080 >> C:\\DX.REG\n';
+  autoexec += ':cd2\n';
+  autoexec += 'if not exist C:\\DGGL\\Volume\\CD3.reg goto cd3\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD3.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += 'type C:\\DGGL\\Volume\\CD4.reg >> C:\\DX.REG\n';
+  autoexec += 'echo 80,80,80,80 >> C:\\DX.REG\n';
+  autoexec += ':cd3\n';
+
+  // Mount host folder and copy game files to C: drive
   autoexec += `Mount V "${hostDir}" > nul\n`;
   autoexec += 'xcopy /e /y V:\\*.* C:\\ > nul\n';
   autoexec += 'C: > nul\n';
@@ -674,14 +907,42 @@ export async function generateW95krConfig(
   // Boot from C: drive
   autoexec += 'boot -l C > nul\n';
 
-  // Get default Win9x settings and merge with custom settings from edit.conf
-  let settings = getDefaultWin9xSettings();
-  // Add W95-specific vmemsize
-  if (settings.dosbox) {
-    settings.dosbox.vmemsize = '8';
-  }
+  // Get Win9x settings with CFGFILE preset and edit.conf overrides
+  const cfgFile = option.cfgFile;
+  const presetResult = await getWin9xSettingsWithPreset(cfgFile, editConfContent);
+  let settings = presetResult.settings;
+
+  // Apply any additional custom settings
   if (customSettings) {
     settings = mergeSettings(settings, customSettings);
+  }
+
+  // Determine mapper file (from preset, edit.conf, or default)
+  const mapperFileName = presetResult.mapperFile ||
+    (settings.sdl?.mapperfile && typeof settings.sdl.mapperfile === 'string' ? settings.sdl.mapperfile : null);
+
+  // Handle mapper file
+  if (mapperFileName) {
+    const mapperContent = getMapperFile(mapperFileName);
+    if (mapperContent) {
+      // Write mapper file to game folder
+      const mapperPath = join(gameDir, mapperFileName.endsWith('.txt') ? mapperFileName : `${mapperFileName}.txt`);
+      await writeFile(mapperPath, mapperContent);
+      // Update settings to point to local mapper file
+      settings.sdl = settings.sdl || {};
+      settings.sdl.mapperfile = mapperPath;
+      console.log(`Mapper file written: ${mapperPath}`);
+    } else {
+      console.log(`Warning: Mapper file not found in bundle: ${mapperFileName}`);
+      // Remove mapperfile setting if file not found
+      if (settings.sdl) {
+        delete settings.sdl.mapperfile;
+      }
+    }
+  }
+
+  if (cfgFile) {
+    console.log(`Applied CFGFILE preset: ${cfgFile}`);
   }
 
   // Generate conf file
@@ -690,6 +951,14 @@ export async function generateW95krConfig(
     autoexec,
     '# DOSBox-X configuration for Windows 95 (W95KR)\n# Auto-generated by doogie-cli'
   );
+
+  // Write generated config to log file for debugging
+  const logsDir = getLogsDir();
+  if (!existsSync(logsDir)) {
+    await mkdir(logsDir, { recursive: true });
+  }
+  const logPath = join(logsDir, 'dosbox-config.log');
+  await writeFile(logPath, `# Generated at: ${new Date().toISOString()}\n# Game: W95KR\n\n${config}`);
 
   await writeFile(configPath, config);
   return configPath;
@@ -707,17 +976,25 @@ export async function launchW95krGame(
     throw new Error('DOSBox-X 실행파일을 찾을 수 없습니다.');
   }
 
-  // For DOSBox-X, always use W95KR-x image
-  const w95krName = 'W95KR-x';
+  // Get the correct image based on executer name from gameConfig
+  const executerName = gameConfig.executerName || 'W95KR_Daum_Final';
+  const mapping = getExecuterMapping(executerName);
 
-  // Check if W95KR is installed
-  const w95krInfo = await findW95krByName(w95krName);
-
-  if (!w95krInfo) {
-    throw new Error(`W95KR 이미지가 설치되어 있지 않습니다: ${w95krName}\n\nW95KR 이미지를 먼저 설치해주세요.`);
+  if (!mapping.imageInfo) {
+    throw new Error(`실행기 ${executerName}에 대한 이미지 정보를 찾을 수 없습니다.`);
   }
 
-  console.log(`Using W95KR: ${w95krInfo.name} (${w95krInfo.version})`);
+  const imageName = mapping.imageInfo.name;
+  console.log(`Executer: ${executerName} -> Image: ${imageName}`);
+
+  // Check if the image is installed
+  const w95krInfo = await findWin9xImageByName(imageName);
+
+  if (!w95krInfo) {
+    throw new Error(`Win9x 이미지가 설치되어 있지 않습니다: ${imageName}\n\n다음 명령어로 이미지를 설치해주세요:\n  doogie-cli install-image ${imageName}`);
+  }
+
+  console.log(`Using Win95 image: ${w95krInfo.name} (${w95krInfo.version})`);
   if (selectedOption.optionPath) {
     console.log(`Auto-run option: ${selectedOption.optionPath}`);
   }
@@ -726,14 +1003,21 @@ export async function launchW95krGame(
   const resolution = gameConfig.resolution || { width: 640, height: 480, bitsPerPixel: 8 };
   console.log(`Setting display: ${resolution.width}x${resolution.height} ${resolution.bitsPerPixel === 8 ? '256 colors' : `${resolution.bitsPerPixel}-bit`}`);
 
-  // Generate DOSBox-X config for W95KR (writes DX.REG to host and copies via autoexec)
-  // Pass dosboxSettings from edit.conf as custom settings
+  // Read edit.conf content for settings overrides
+  let editConfContent: string | undefined;
+  const editConfPath = join(gameDir, '..', 'Config', 'DosBox', 'edit.conf');
+  if (existsSync(editConfPath)) {
+    editConfContent = await Bun.file(editConfPath).text();
+  }
+
+  // Generate DOSBox-X config for W95KR with CFGFILE preset and edit.conf overrides
   const configPath = await generateW95krConfig(
     gameDir,
     selectedOption,
     w95krInfo,
     resolution,
-    gameConfig.dosboxSettings
+    gameConfig.dosboxSettings,
+    editConfContent
   );
 
   // Launch DOSBox-X
