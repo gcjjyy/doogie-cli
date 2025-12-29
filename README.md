@@ -6,7 +6,7 @@
 
 > **Windows 사용자**: [공식 두기 런처](https://nemo838.tistory.com/)를 사용해주세요.
 
-<img width="1324" height="611" alt="Screenshot" src="https://github.com/user-attachments/assets/48dbb8da-e01f-4889-a9ad-7ca0e9723bba" />
+<img width="1739" height="814" alt="image" src="https://github.com/user-attachments/assets/e64f52af-f16c-4b1c-be04-40328a2be9dd" />
 
 ## 설치
 
