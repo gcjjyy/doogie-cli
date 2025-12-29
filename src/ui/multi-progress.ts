@@ -66,26 +66,47 @@ export class MultiProgress {
   finish(): void {
     // Final render to show completion
     this.render();
+    // Reset for clean output after progress is done
+    this.lastDisplayedLines = 0;
   }
 
   private getActiveFiles(): string[] {
-    // Get files that are currently downloading
-    const downloading = this.fileOrder.filter(f => {
+    // Separate downloading and completed files
+    const downloading: string[] = [];
+    const completed: string[] = [];
+
+    for (const f of this.fileOrder) {
       const file = this.files.get(f);
-      return file && file.status === 'downloading';
-    });
+      if (!file || file.status === 'waiting') continue;
 
-    // Show downloading files first, then fill remaining slots with recently completed
-    const result: string[] = [...downloading];
-    const remainingSlots = MAX_DISPLAY_FILES - result.length;
-
-    if (remainingSlots > 0) {
-      // Add most recently completed files (from completedOrder, most recent last)
-      const recentDone = this.completedOrder.slice(-remainingSlots);
-      result.push(...recentDone);
+      if (file.status === 'downloading') {
+        downloading.push(f);
+      } else {
+        // done or error
+        completed.push(f);
+      }
     }
 
-    return result.slice(0, MAX_DISPLAY_FILES);
+    // Prioritize downloading files, fill remaining slots with recent completed
+    const result: string[] = [];
+
+    // Add all downloading files first (up to MAX)
+    for (const f of downloading.slice(-MAX_DISPLAY_FILES)) {
+      result.push(f);
+    }
+
+    // Fill remaining slots with most recent completed files
+    const remainingSlots = MAX_DISPLAY_FILES - result.length;
+    if (remainingSlots > 0) {
+      for (const f of completed.slice(-remainingSlots)) {
+        result.push(f);
+      }
+    }
+
+    // Sort by original order for consistent display
+    result.sort((a, b) => this.fileOrder.indexOf(a) - this.fileOrder.indexOf(b));
+
+    return result;
   }
 
   private getStats(): { done: number; total: number; errors: number } {
@@ -128,6 +149,17 @@ export class MultiProgress {
     // Print lines
     for (const line of lines) {
       process.stdout.write('\x1b[2K' + line + '\n');
+    }
+
+    // Clear any remaining old lines if we're printing fewer lines than before
+    const extraLines = this.lastDisplayedLines - lines.length;
+    for (let i = 0; i < extraLines; i++) {
+      process.stdout.write('\x1b[2K\n');
+    }
+
+    // Move cursor back up if we printed extra clearing lines
+    if (extraLines > 0) {
+      process.stdout.write(`\x1b[${extraLines}A`);
     }
 
     this.lastDisplayedLines = lines.length;

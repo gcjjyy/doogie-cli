@@ -104,6 +104,10 @@ export function getDataDir(): string {
   return join(getAppDir(), 'data');
 }
 
+export function getMapperDir(): string {
+  return join(getAppDir(), 'mapper');
+}
+
 export function getDefaultConfPath(): string {
   return join(getDataDir(), 'Default.conf');
 }

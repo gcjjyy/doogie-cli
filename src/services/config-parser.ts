@@ -4,11 +4,8 @@ import {
   parseEditConf as parseEditConfEntries,
   parseEditConfVersion,
   isLegacyVersion,
-  convertEditConfToSettings,
   extractWin9xSettings,
   getExecuterType,
-  type DosboxSettings,
-  type Win9xSettings,
 } from './dosbox-settings.ts';
 
 // EUC-KR is a valid encoding label for TextDecoder
@@ -78,12 +75,8 @@ export interface ExecutionOption {
 export interface GameConfig {
   info: GameConfigInfo;
   executionOptions: ExecutionOption[];
-  cpuCycles?: number;
-  cpuType?: string;
   executerName?: string;  // edit.conf 0|0 값 (예: 0.74_Daum, W98KR_Daum_Final)
   resolution?: Win9xResolution;  // Win9x display resolution from edit.conf
-  dosboxSettings?: DosboxSettings;  // Full DOSBox settings from edit.conf
-  win9xSettings?: Win9xSettings;    // Win9x-specific settings (DX.REG, etc.)
 }
 
 function parseInfoTxt(content: string): { name: string; nameEn?: string; updateLog?: string } {
@@ -431,12 +424,8 @@ function parseResolutionString(resStr: string): Win9xResolution | null {
 }
 
 interface ParsedEditConf {
-  cpuCycles?: number;
-  cpuType?: string;
   executerName?: string;
   resolution?: Win9xResolution;
-  dosboxSettings?: DosboxSettings;
-  win9xSettings?: Win9xSettings;
 }
 
 function parseEditConf(content: string): ParsedEditConf {
@@ -446,26 +435,8 @@ function parseEditConf(content: string): ParsedEditConf {
 
   // Use new index-based parser with version-aware mapping
   const entries = parseEditConfEntries(content);
-  const dosboxSettings = convertEditConfToSettings(entries, isLegacy);
   const win9xSettings = extractWin9xSettings(entries, isLegacy);
   const executerName = getExecuterType(entries);
-
-  // Extract CPU settings from dosboxSettings
-  let cpuCycles: number | undefined;
-  let cpuType: string | undefined;
-
-  if (dosboxSettings.cpu) {
-    if (dosboxSettings.cpu.cycles) {
-      const cycleValue = String(dosboxSettings.cpu.cycles);
-      const num = parseInt(cycleValue, 10);
-      if (!isNaN(num)) {
-        cpuCycles = num;
-      }
-    }
-    if (dosboxSettings.cpu.cputype) {
-      cpuType = String(dosboxSettings.cpu.cputype);
-    }
-  }
 
   // Convert win9xSettings.resolution to Win9xResolution format
   const resolution: Win9xResolution | undefined = win9xSettings.resolution
@@ -477,12 +448,8 @@ function parseEditConf(content: string): ParsedEditConf {
     : undefined;
 
   return {
-    cpuCycles,
-    cpuType,
     executerName: executerName || undefined,
     resolution,
-    dosboxSettings,
-    win9xSettings,
   };
 }
 
@@ -541,12 +508,8 @@ export async function parseGameConfig(gameDir: string): Promise<GameConfig | nul
     if (files.includes('edit.conf')) {
       const content = await readEucKrFile(join(dosboxDir, 'edit.conf'));
       const editConfig = parseEditConf(content);
-      config.cpuCycles = editConfig.cpuCycles;
-      config.cpuType = editConfig.cpuType;
       config.executerName = editConfig.executerName;
       config.resolution = editConfig.resolution;
-      config.dosboxSettings = editConfig.dosboxSettings;
-      config.win9xSettings = editConfig.win9xSettings;
 
       // Update executer based on executerName for options that use image.img
       if (editConfig.executerName) {

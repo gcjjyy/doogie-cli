@@ -198,151 +198,151 @@ export const EXECUTER_MAPPING: Record<string, ExecuterMapping> = {
   },
 
   // ============================================
-  // Windows 95 Korean (한국어)
+  // Windows 95 Korean (한국어) - DOSBox-X 호환을 위해 W95KR-x 사용
   // ============================================
   'W95KR': {
     type: 'w95kr',
     alternative: 'w95kr',
-    imageInfo: WIN9X_IMAGES['W95KR_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95KR-x'] || null,  // 원본: WIN9X_IMAGES['W95KR_Daum']
     supported: true,
     description: 'Windows 95 한국어 게임',
   },
   'W95KR_Daum': {
     type: 'w95kr',
     alternative: 'w95kr',
-    imageInfo: WIN9X_IMAGES['W95KR_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95KR-x'] || null,  // 원본: WIN9X_IMAGES['W95KR_Daum']
     supported: true,
     description: 'Windows 95 한국어 게임 (Daum)',
   },
   'W95KR_Daum_Final': {
     type: 'w95kr',
     alternative: 'w95kr',
-    imageInfo: WIN9X_IMAGES['W95KR_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W95KR-x'] || null,  // 원본: WIN9X_IMAGES['W95KR_Daum_Final']
     supported: true,
     description: 'Windows 95 한국어 게임 (Daum Final)',
   },
 
   // ============================================
-  // Windows 95 Japanese (일본어)
+  // Windows 95 Japanese (일본어) - DOSBox-X 호환을 위해 W95JP-x 사용
   // ============================================
   'W95JP': {
     type: 'w95jp',
     alternative: 'w95jp',
-    imageInfo: WIN9X_IMAGES['W95JP_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95JP-x'] || null,  // 원본: WIN9X_IMAGES['W95JP_Daum']
     supported: true,
     description: 'Windows 95 일본어 게임',
   },
   'W95JP_Daum': {
     type: 'w95jp',
     alternative: 'w95jp',
-    imageInfo: WIN9X_IMAGES['W95JP_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95JP-x'] || null,  // 원본: WIN9X_IMAGES['W95JP_Daum']
     supported: true,
     description: 'Windows 95 일본어 게임 (Daum)',
   },
   'W95JP_Daum_Final': {
     type: 'w95jp',
     alternative: 'w95jp',
-    imageInfo: WIN9X_IMAGES['W95JP_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W95JP-x'] || null,  // 원본: WIN9X_IMAGES['W95JP_Daum_Final']
     supported: true,
     description: 'Windows 95 일본어 게임 (Daum Final)',
   },
 
   // ============================================
-  // Windows 95 English (영어)
+  // Windows 95 English (영어) - DOSBox-X 호환을 위해 W95EN-x 사용
   // ============================================
   'W95EN': {
     type: 'w95en',
     alternative: 'w95en',
-    imageInfo: WIN9X_IMAGES['W95EN_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95EN-x'] || null,  // 원본: WIN9X_IMAGES['W95EN_Daum']
     supported: true,
     description: 'Windows 95 영어 게임',
   },
   'W95EN_Daum': {
     type: 'w95en',
     alternative: 'w95en',
-    imageInfo: WIN9X_IMAGES['W95EN_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W95EN-x'] || null,  // 원본: WIN9X_IMAGES['W95EN_Daum']
     supported: true,
     description: 'Windows 95 영어 게임 (Daum)',
   },
   'W95EN_Daum_Final': {
     type: 'w95en',
     alternative: 'w95en',
-    imageInfo: WIN9X_IMAGES['W95EN_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W95EN-x'] || null,  // 원본: WIN9X_IMAGES['W95EN_Daum_Final']
     supported: true,
     description: 'Windows 95 영어 게임 (Daum Final)',
   },
 
   // ============================================
-  // Windows 98 Korean (한국어)
+  // Windows 98 Korean (한국어) - DOSBox-X 호환을 위해 W98KR-x 사용
   // ============================================
   'W98KR': {
     type: 'w98kr',
     alternative: 'w98kr',
-    imageInfo: WIN9X_IMAGES['W98KR_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98KR-x'] || null,  // 원본: WIN9X_IMAGES['W98KR_Daum']
     supported: true,
     description: 'Windows 98 한국어 게임',
   },
   'W98KR_Daum': {
     type: 'w98kr',
     alternative: 'w98kr',
-    imageInfo: WIN9X_IMAGES['W98KR_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98KR-x'] || null,  // 원본: WIN9X_IMAGES['W98KR_Daum']
     supported: true,
     description: 'Windows 98 한국어 게임 (Daum)',
   },
   'W98KR_Daum_Final': {
     type: 'w98kr',
     alternative: 'w98kr',
-    imageInfo: WIN9X_IMAGES['W98KR_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W98KR-x'] || null,  // 원본: WIN9X_IMAGES['W98KR_Daum_Final']
     supported: true,
     description: 'Windows 98 한국어 게임 (Daum Final)',
   },
 
   // ============================================
-  // Windows 98 Japanese (일본어)
+  // Windows 98 Japanese (일본어) - DOSBox-X 호환을 위해 W98JP-x 사용
   // ============================================
   'W98JP': {
     type: 'w98jp',
     alternative: 'w98jp',
-    imageInfo: WIN9X_IMAGES['W98JP_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98JP-x'] || null,  // 원본: WIN9X_IMAGES['W98JP_Daum']
     supported: true,
     description: 'Windows 98 일본어 게임',
   },
   'W98JP_Daum': {
     type: 'w98jp',
     alternative: 'w98jp',
-    imageInfo: WIN9X_IMAGES['W98JP_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98JP-x'] || null,  // 원본: WIN9X_IMAGES['W98JP_Daum']
     supported: true,
     description: 'Windows 98 일본어 게임 (Daum)',
   },
   'W98JP_Daum_Final': {
     type: 'w98jp',
     alternative: 'w98jp',
-    imageInfo: WIN9X_IMAGES['W98JP_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W98JP-x'] || null,  // 원본: WIN9X_IMAGES['W98JP_Daum_Final']
     supported: true,
     description: 'Windows 98 일본어 게임 (Daum Final)',
   },
 
   // ============================================
-  // Windows 98 English (영어)
+  // Windows 98 English (영어) - DOSBox-X 호환을 위해 W98EN-x 사용
   // ============================================
   'W98EN': {
     type: 'w98en',
     alternative: 'w98en',
-    imageInfo: WIN9X_IMAGES['W98EN_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98EN-x'] || null,  // 원본: WIN9X_IMAGES['W98EN_Daum']
     supported: true,
     description: 'Windows 98 영어 게임',
   },
   'W98EN_Daum': {
     type: 'w98en',
     alternative: 'w98en',
-    imageInfo: WIN9X_IMAGES['W98EN_Daum'] || null,
+    imageInfo: WIN9X_IMAGES['W98EN-x'] || null,  // 원본: WIN9X_IMAGES['W98EN_Daum']
     supported: true,
     description: 'Windows 98 영어 게임 (Daum)',
   },
   'W98EN_Daum_Final': {
     type: 'w98en',
     alternative: 'w98en',
-    imageInfo: WIN9X_IMAGES['W98EN_Daum_Final'] || null,
+    imageInfo: WIN9X_IMAGES['W98EN-x'] || null,  // 원본: WIN9X_IMAGES['W98EN_Daum_Final']
     supported: true,
     description: 'Windows 98 영어 게임 (Daum Final)',
   },
@@ -372,13 +372,13 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return EXECUTER_MAPPING[executerName];
   }
 
-  // 접두사로 매칭 (W95XX_*, W98XX_*)
+  // 접두사로 매칭 (W95XX_*, W98XX_*) - DOSBox-X 호환을 위해 -x 이미지 사용
   // Windows 95 계열
   if (executerName.startsWith('W95KR')) {
     return {
       type: 'w95kr',
       alternative: 'w95kr',
-      imageInfo: WIN9X_IMAGES['W95KR_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W95KR-x'] || null,  // 원본: WIN9X_IMAGES['W95KR_Daum_Final']
       supported: true,
       description: `Windows 95 한국어 게임 (${executerName})`,
     };
@@ -387,7 +387,7 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return {
       type: 'w95jp',
       alternative: 'w95jp',
-      imageInfo: WIN9X_IMAGES['W95JP_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W95JP-x'] || null,  // 원본: WIN9X_IMAGES['W95JP_Daum_Final']
       supported: true,
       description: `Windows 95 일본어 게임 (${executerName})`,
     };
@@ -396,7 +396,7 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return {
       type: 'w95en',
       alternative: 'w95en',
-      imageInfo: WIN9X_IMAGES['W95EN_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W95EN-x'] || null,  // 원본: WIN9X_IMAGES['W95EN_Daum_Final']
       supported: true,
       description: `Windows 95 영어 게임 (${executerName})`,
     };
@@ -407,7 +407,7 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return {
       type: 'w98kr',
       alternative: 'w98kr',
-      imageInfo: WIN9X_IMAGES['W98KR_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W98KR-x'] || null,  // 원본: WIN9X_IMAGES['W98KR_Daum_Final']
       supported: true,
       description: `Windows 98 한국어 게임 (${executerName})`,
     };
@@ -416,7 +416,7 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return {
       type: 'w98jp',
       alternative: 'w98jp',
-      imageInfo: WIN9X_IMAGES['W98JP_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W98JP-x'] || null,  // 원본: WIN9X_IMAGES['W98JP_Daum_Final']
       supported: true,
       description: `Windows 98 일본어 게임 (${executerName})`,
     };
@@ -425,7 +425,7 @@ export function getExecuterMapping(executerName: string): ExecuterMapping {
     return {
       type: 'w98en',
       alternative: 'w98en',
-      imageInfo: WIN9X_IMAGES['W98EN_Daum_Final'] || null,
+      imageInfo: WIN9X_IMAGES['W98EN-x'] || null,  // 원본: WIN9X_IMAGES['W98EN_Daum_Final']
       supported: true,
       description: `Windows 98 영어 게임 (${executerName})`,
     };

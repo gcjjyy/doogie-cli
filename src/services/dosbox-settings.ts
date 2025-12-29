@@ -19,43 +19,44 @@ import {
 export const SECTION_INDEX = SECTION_NAMES;
 export const SECTION_ITEMS = OPTION_DAT_SECTION_ITEMS;
 
-// 구버전 (ver.20.xx) 섹션 인덱스 매핑
-// 구버전에서는 섹션 순서가 다름: 1=sdl, 3=dosbox, 6=cpu 등
+// 구버전 (ver.20.xx 및 ver.21.xx) 섹션 인덱스 매핑
+// 주의: 섹션 21은 Win9x 해상도 전용 - DOSBox 설정으로 변환하면 안됨
 export const SECTION_INDEX_LEGACY: Record<number, string> = {
   0: 'default',
-  1: 'sdl',        // 구버전에서 섹션 1은 sdl (autolock, sensitivity, mapperfile 등)
+  1: 'win9x',      // win9x 전용 설정 (9xres, 9xmpu 등) - DOSBox conf로 변환 안함
   2: 'pcem',
   3: 'dosbox',     // 신버전에서는 7
   6: 'cpu',        // 신버전에서는 8
   19: 'glide',     // 신버전에서는 20
-  21: 'voodoo',
-  32: 'ethernet, pcap',
+  // 섹션 21은 정의하지 않음 - extractWin9xSettings에서 해상도로만 처리
+  32: 'ide, secondary',  // cd-rom insertion delay가 여기에 속함
 };
 
 // 구버전 섹션별 항목 인덱스 매핑
+// 주의: 섹션 21은 매핑하지 않음 (21|1|800x8 같은 해상도 설정은 extractWin9xSettings에서만 처리)
 export const SECTION_ITEMS_LEGACY: Record<number, Record<number, string>> = {
   0: {
-    0: 'executer',  // 실행기 (W95KR_Daum 등)
+    0: 'version',  // 실행기
   },
-  1: {  // sdl section (구버전에서 섹션 1은 sdl)
-    0: 'fullscreen',
-    1: 'fulldouble',
-    2: 'fullresolution',
-    3: 'windowresolution',
-    4: 'output',
-    5: 'autolock',
-    6: 'sensitivity',
-    7: 'waitonerror',
-    8: 'priority',
-    9: 'mapperfile',
-    10: 'usescancodes',
+  1: {  // win9x section - DOSBox conf로 변환되지 않음 (settingsToConfString에서 skip)
+    0: '9xdrv',
+    1: '9xres',
+    2: '9xddraw',
+    3: '9xd3d',
+    4: '9x3dfx',
+    5: '9xmpu',
+    6: '9xmaster',
+    7: '9xwave',
+    8: '9xmidi',
+    9: '9xcd',
+    10: '9xboot',
   },
   3: {  // dosbox section
     1: 'machine',
     3: 'memsize',
     4: 'vmemsize',
   },
-  6: {  // cpu section (구버전)
+  6: {  // cpu section
     0: 'core',
     1: 'cputype',
     2: 'cycles',
@@ -63,11 +64,9 @@ export const SECTION_ITEMS_LEGACY: Record<number, Record<number, string>> = {
     11: 'apmbios',
   },
   19: {  // glide section
-    0: 'glide',  // emu, true, false
+    0: 'glide',
   },
-  21: {  // voodoo section
-    1: 'glide',
-  },
+  // 섹션 21 (voodoo) 매핑 제거 - 21|1|800x8가 voodoo.glide로 변환되는 버그 방지
   32: {  // ethernet section
     11: 'cd-rom insertion delay',
   },
@@ -322,8 +321,9 @@ export function settingsToConfString(settings: DosboxSettings): string {
   const lines: string[] = [];
 
   for (const [section, items] of Object.entries(settings)) {
-    // Skip special sections
-    if (section === 'default' || section === 'win9x' || section === 'pcem' || section === 'separator') {
+    // Skip special sections (edit.conf에서 변환된 섹션들 중 DOSBox conf에 직접 쓰면 안되는 것들)
+    // glide: edit.conf의 19|0|emu가 [glide] glide=emu로 변환되는데, 이미 [voodoo]에 glide 설정이 있음
+    if (section === 'default' || section === 'win9x' || section === 'pcem' || section === 'separator' || section === 'glide') {
       continue;
     }
 
@@ -339,7 +339,7 @@ export function settingsToConfString(settings: DosboxSettings): string {
 
 /**
  * 기본 W98KR/W95KR 설정
- * Windows 두기 런처와 동일한 설정
+ * v1.0.0에서 정상 동작하던 설정
  */
 export function getDefaultWin9xSettings(): DosboxSettings {
   return {
@@ -362,14 +362,15 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       'quit warning': 'false',
       machine: 'svga_s3',
       memsize: '256',
-      vmemsize: '4',
-      memsizekb: '0',
-      memalias: '0',
     },
     render: {
       frameskip: '0',
       aspect: 'true',
       scaler: 'hardware2x',
+    },
+    video: {
+      vmemsize: '4',
+      vmemsizekb: '0',
     },
     cpu: {
       core: 'dynamic',
@@ -379,21 +380,16 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       cycleup: '150',
       cycledown: '100',
       apmbios: 'true',
-      isapnpbios: 'false',
+      isapnpbios: 'true',
     },
     keyboard: {
       aux: 'false',
-      auxdevice: 'intellimouse',
     },
-    pci: {},
     voodoo: {
-      voodoo: 'false',
-      voodoo_card: 'false',
-    },
-    glide: {
-      glide: 'emu',
-      grport: '600',
-      lfb: 'full',
+      voodoo_card: 'auto',
+      voodoo_maxmem: 'true',
+      glide: 'true',
+      lfb: 'full_noaux',
       splash: 'false',
     },
     mixer: {
@@ -453,25 +449,25 @@ export function getDefaultWin9xSettings(): DosboxSettings {
       ems: 'true',
       umb: 'true',
     },
-    'fdc, primary': {
-      enable: 'true',
-      pnp: 'false',
-    },
     'ide, primary': {
       enable: 'true',
-      pnp: 'false',
+      pnp: 'true',
     },
     'ide, secondary': {
       enable: 'true',
-      pnp: 'false',
+      pnp: 'true',
     },
     'ide, tertiary': {
       enable: 'false',
-      pnp: 'false',
+      pnp: 'true',
     },
     'ide, quaternary': {
       enable: 'false',
-      pnp: 'false',
+      pnp: 'true',
+    },
+    'fdc, primary': {
+      enable: 'false',
+      pnp: 'true',
     },
   };
 }
@@ -573,14 +569,13 @@ async function getPresetModule() {
 }
 
 /**
- * Load CFGFILE preset and convert to DosboxSettings
+ * Load CFGFILE preset and extract executer/mapper info
  * CFGFILE is specified in autoexec.conf, e.g., "CFGFILE:[KR98]D3D X.conf"
  *
  * @param cfgFile CFGFILE string from autoexec.conf
- * @returns DosboxSettings from the preset, or null if not found
+ * @returns Executer and mapper info, or null if not found
  */
 export async function loadCfgFilePreset(cfgFile: string): Promise<{
-  settings: DosboxSettings;
   executerName: string | null;
   mapperFile: string | null;
 } | null> {
@@ -588,15 +583,11 @@ export async function loadCfgFilePreset(cfgFile: string): Promise<{
 
   const presetContent = getPresetFile(cfgFile);
   if (!presetContent) {
-    console.log(`CFGFILE preset not found: ${cfgFile}`);
     return null;
   }
 
   // Parse the preset file (same format as edit.conf)
-  const version = parseEditConfVersion(presetContent);
-  const isLegacy = isLegacyVersion(version);
   const entries = parseEditConf(presetContent);
-  const settings = convertEditConfToSettings(entries, isLegacy);
   const executerName = getExecuterType(entries);
 
   // Extract mapper file if specified (5|9|mapperfile.txt)
@@ -608,17 +599,12 @@ export async function loadCfgFilePreset(cfgFile: string): Promise<{
     }
   }
 
-  console.log(`Loaded CFGFILE preset: ${cfgFile} -> executer: ${executerName}, mapper: ${mapperFile}`);
-
-  return { settings, executerName, mapperFile };
+  return { executerName, mapperFile };
 }
 
 /**
- * Get DOSBox-X settings with CFGFILE preset applied
- *
- * @param cfgFile Optional CFGFILE string
- * @param editConfContent Optional edit.conf content for additional overrides
- * @returns Merged DosboxSettings
+ * Get DOSBox-X settings for Win9x games
+ * Uses default settings and extracts executer/mapper from cfgFile and edit.conf
  */
 export async function getWin9xSettingsWithPreset(
   cfgFile?: string,
@@ -628,36 +614,28 @@ export async function getWin9xSettingsWithPreset(
   executerName: string | null;
   mapperFile: string | null;
 }> {
-  // Start with base Win9x settings
-  let settings = getDefaultWin9xSettings();
+  const settings = getDefaultWin9xSettings();
   let executerName: string | null = null;
   let mapperFile: string | null = null;
 
-  // Apply CFGFILE preset if specified
+  // Extract executer/mapper from CFGFILE preset
   if (cfgFile) {
     const presetResult = await loadCfgFilePreset(cfgFile);
     if (presetResult) {
-      settings = mergeSettings(settings, presetResult.settings);
       executerName = presetResult.executerName;
       mapperFile = presetResult.mapperFile;
     }
   }
 
-  // Apply edit.conf overrides if present
+  // Extract executer/mapper from edit.conf (overrides preset)
   if (editConfContent) {
-    const version = parseEditConfVersion(editConfContent);
-    const isLegacy = isLegacyVersion(version);
     const entries = parseEditConf(editConfContent);
-    const editSettings = convertEditConfToSettings(entries, isLegacy);
-    settings = mergeSettings(settings, editSettings);
 
-    // Get executer from edit.conf if not set by preset
     const editExecuter = getExecuterType(entries);
     if (editExecuter) {
       executerName = editExecuter;
     }
 
-    // Get mapper file from edit.conf if not set by preset
     for (const entry of entries) {
       if (entry.section === 5 && entry.item === 9 && entry.value) {
         mapperFile = entry.value;
