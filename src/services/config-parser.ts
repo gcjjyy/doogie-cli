@@ -332,6 +332,7 @@ function parseAutoexecConf(content: string): ExecutionOption[] {
   // Old format: collect all commands (excluding addkey which is handled separately)
   const commands: string[] = [];
   const addkeyCommands: string[] = [];
+  let diskGeometry: string | undefined;
 
   for (const line of lines) {
     // Collect addkey commands (두기 런처 키 매크로 명령어, DOSBox-X 전용)
@@ -340,6 +341,12 @@ function parseAutoexecConf(content: string): ExecutionOption[] {
       continue;
     }
     if (line.startsWith('#') || line.startsWith(';')) continue;
+
+    // Check for disk geometry pattern (e.g., 512,63,8,589)
+    if (line.match(/^\d+,\d+,\d+,\d+$/)) {
+      diskGeometry = line;
+      continue;
+    }
 
     // All other non-comment lines are commands
     commands.push(line);
@@ -351,6 +358,7 @@ function parseAutoexecConf(content: string): ExecutionOption[] {
       commands,
       executer: 'dosbox',
       optionPath: '000',
+      diskGeometry,
       addkeyCommands: addkeyCommands.length > 0 ? addkeyCommands : undefined,
     }];
   }
