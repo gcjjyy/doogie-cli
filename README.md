@@ -19,11 +19,28 @@ brew install doogie-cli
 
 ### Linux
 
-[Releases](https://github.com/gcjjyy/doogie-cli/releases)에서 다운로드
+원라인 설치 (권장):
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/gcjjyy/doogie-cli/main/install.sh | sh
+```
+
+이 스크립트는 doogie-cli와 함께 DOSBox-X, 7-Zip을 자동으로 설치합니다.
+
+**지원 배포판**: Debian/Ubuntu, Fedora, RHEL/CentOS, Arch Linux, openSUSE
+
+#### 수동 설치
+
+[Releases](https://github.com/gcjjyy/doogie-cli/releases)에서 다운로드:
+
+```bash
+# x64
 tar -xzf doogie-cli-linux-x64.tar.gz
-./doogie-cli-linux-x64
+sudo mv doogie-cli-linux-x64 /usr/local/bin/doogie
+
+# ARM64 (Raspberry Pi 등)
+tar -xzf doogie-cli-linux-arm64.tar.gz
+sudo mv doogie-cli-linux-arm64 /usr/local/bin/doogie
 ```
 
 ### 소스에서 빌드
@@ -45,8 +62,20 @@ doogie
 
 ## 지원 현황
 
-| 게임 유형 | 지원 | 비고 |
-|----------|------|------|
+### 플랫폼
+
+| OS | 아키텍처 | 지원 | 비고 |
+|----|----------|------|------|
+| macOS | Apple Silicon (arm64) | ✅ | Homebrew |
+| macOS | Intel (x64) | ✅ | Homebrew |
+| Linux | x64 | ✅ | install.sh / 수동 |
+| Linux | ARM64 | ✅ | install.sh / 수동 |
+| Windows | - | ❌ | [공식 두기 런처](https://nemo838.tistory.com/) 사용 |
+
+### 게임 유형
+
+| 유형 | 지원 | 비고 |
+|------|------|------|
 | DOS 게임 | ✅ | DOSBox-X |
 | Windows 95 게임 | ✅ | W95KR-x 이미지 |
 | Windows 98 게임 | ✅ | W98KR-x 이미지 |

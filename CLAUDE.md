@@ -49,7 +49,7 @@ bun run tsc          # 타입 체크
 
 ## 빌드 타겟
 - macOS arm64/x64
-- Linux x64
+- Linux x64/arm64
 - (Windows 미지원 - 공식 두기 런처 사용)
 
 ## 개발 지침
@@ -86,9 +86,10 @@ bun run build:all
 
 # 3. tar.gz 압축 (실행 권한 보존) - dist 디렉토리에서 실행
 cd dist && \
-tar -czvf doogie-cli-macos-arm64.tar.gz doogie-cli-macos-arm64 && \
-tar -czvf doogie-cli-macos-x64.tar.gz doogie-cli-macos-x64 && \
-tar -czvf doogie-cli-linux-x64.tar.gz doogie-cli-linux-x64
+tar -czvf doogie-cli-macos-arm64.tar.gz -C doogie-cli-macos-arm64-dir . && \
+tar -czvf doogie-cli-macos-x64.tar.gz -C doogie-cli-macos-x64-dir . && \
+tar -czvf doogie-cli-linux-x64.tar.gz -C doogie-cli-linux-x64-dir . && \
+tar -czvf doogie-cli-linux-arm64.tar.gz -C doogie-cli-linux-arm64-dir .
 
 # 4. GitHub 릴리즈 생성 (절대 경로 사용!)
 gh release create v0.x.x \
@@ -96,7 +97,8 @@ gh release create v0.x.x \
   --notes "릴리즈 노트..." \
   /full/path/to/dist/doogie-cli-macos-arm64.tar.gz \
   /full/path/to/dist/doogie-cli-macos-x64.tar.gz \
-  /full/path/to/dist/doogie-cli-linux-x64.tar.gz
+  /full/path/to/dist/doogie-cli-linux-x64.tar.gz \
+  /full/path/to/dist/doogie-cli-linux-arm64.tar.gz
 
 # 5. Homebrew Formula 업데이트 (homebrew-doogie 저장소)
 # SHA256 해시 생성

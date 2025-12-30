@@ -38,6 +38,13 @@ const BUILD_TARGETS: BuildTarget[] = [
     platform: 'linux',
     arch: 'x86_64',
   },
+  {
+    name: 'Linux (ARM64)',
+    target: 'bun-linux-arm64',
+    outfile: 'doogie-cli-linux-arm64',
+    platform: 'linux',
+    arch: 'arm64',
+  },
 ];
 
 async function copyExecuters(target: BuildTarget): Promise<void> {
