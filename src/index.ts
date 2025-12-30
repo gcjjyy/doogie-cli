@@ -81,33 +81,13 @@ async function main(): Promise<void> {
 
   // Cleanup
   closeDatabase();
-  flushStdin();
   p.outro(pc.dim('즐거운 게임 되세요!'));
   process.exit(0);
-}
-
-// Flush stdin buffer to prevent escape sequence leakage (;1R;1R... issue on Linux)
-function flushStdin(): void {
-  try {
-    if (process.stdin.isTTY) {
-      // Reset terminal to cooked mode
-      process.stdin.setRawMode(false);
-      // Resume to drain buffer, then pause
-      process.stdin.resume();
-      while (process.stdin.read() !== null) {
-        // Drain all pending data
-      }
-      process.stdin.pause();
-    }
-  } catch {
-    // Ignore errors during cleanup
-  }
 }
 
 // Handle Ctrl+C gracefully
 process.on('SIGINT', () => {
   closeDatabase();
-  flushStdin();
   console.log('\n');
   p.outro(pc.dim('종료합니다.'));
   process.exit(0);

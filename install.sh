@@ -277,6 +277,9 @@ main() {
     echo ""
     echo "Run 'doogie' to start the launcher."
     echo ""
+
+    # Flush stdin buffer to prevent escape sequence leakage (;1R;1R... issue)
+    while read -t 0.01 -n 1 2>/dev/null; do :; done
 }
 
 main "$@"
