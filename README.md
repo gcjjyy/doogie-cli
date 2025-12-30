@@ -80,6 +80,7 @@ doogie
 | macOS | Intel (x64) | ✅ | Homebrew |
 | Linux | x64 | ✅ | install.sh / 수동 |
 | Linux | ARM64 | ✅ | install.sh / 수동 |
+| Chrome OS | x64 | ✅ | Linux 개발환경 활성화 후 install.sh |
 | Windows | - | ❌ | [공식 두기 런처](https://nemo838.tistory.com/) 사용 |
 
 ### 게임 유형
