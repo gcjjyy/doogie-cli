@@ -12,10 +12,19 @@ import packageJson from '../package.json';
 const VERSION = packageJson.version;
 const DOOGIE_HOMEPAGE = 'https://nemo838.tistory.com';
 
-async function openInBrowser(url: string): Promise<void> {
+async function openInBrowser(url: string): Promise<boolean> {
   const platform = getPlatform();
   const command = platform === 'darwin' ? 'open' : 'xdg-open';
-  Bun.spawn([command, url]);
+
+  try {
+    const proc = Bun.spawn([command, url], {
+      stderr: 'pipe',
+    });
+    await proc.exited;
+    return proc.exitCode === 0;
+  } catch {
+    return false;
+  }
 }
 
 async function main(): Promise<void> {
@@ -57,7 +66,11 @@ async function main(): Promise<void> {
 
       case 'homepage':
         p.log.info(`${pc.cyan(DOOGIE_HOMEPAGE)} 열기...`);
-        await openInBrowser(DOOGIE_HOMEPAGE);
+        const opened = await openInBrowser(DOOGIE_HOMEPAGE);
+        if (!opened) {
+          p.log.warn('브라우저를 열 수 없습니다. xdg-utils 패키지가 필요합니다.');
+          p.log.info(`URL: ${pc.underline(pc.cyan(DOOGIE_HOMEPAGE))}`);
+        }
         break;
 
       case 'exit':

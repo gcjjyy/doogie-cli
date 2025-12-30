@@ -19,6 +19,16 @@ brew install doogie-cli
 
 ### Linux
 
+#### 사전 요구사항 (RHEL/CentOS/Rocky)
+
+RHEL 계열 배포판에서는 EPEL 저장소를 먼저 활성화해야 합니다:
+
+```bash
+sudo dnf install -y epel-release
+```
+
+#### 설치
+
 원라인 설치 (권장):
 
 ```bash
