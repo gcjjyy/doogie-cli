@@ -95,11 +95,15 @@ doogie
 
 ```
 ~/.doogie-cli/
-├── games/      # 다운로드된 게임
-├── util/       # DOS 유틸리티 (태백한글, SB16 등)
-├── w95kr-x/    # Windows 95 이미지
-├── w98kr-x/    # Windows 98 이미지
-└── doogie.db   # 데이터베이스
+├── games/       # 다운로드된 게임
+├── executers/   # Win9x 이미지 (W95KR, W98KR 등)
+├── util/        # DOS 유틸리티 (태백한글, SB16 등)
+├── data/        # Default.conf, Options 등 설정 데이터
+├── mapper/      # 키 매퍼 설정
+├── logs/        # 로그 파일
+├── temp/        # 임시 파일
+├── config.json  # 사용자 설정
+└── doogie.db    # 데이터베이스
 ```
 
 ## 라이선스
